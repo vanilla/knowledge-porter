@@ -16,7 +16,7 @@ use Psr\Log\LoggerInterface;
 /**
  * The main program loop.
  */
-class Main {
+final class Main {
     /**
      * @var Container
      */
@@ -43,9 +43,12 @@ class Main {
      */
     public function run(array $argv): int {
         $args = $this->cli->parse($argv);
+
+        // Set the args in the container so they can be injected into classes.
         $this->container->setInstance(Args::class, $args);
 
         try {
+            // This is a basic method for each command. You could also create command objects if you would like.
             $methodName = 'run' . self::changeCase($args->getCommand());
             if (method_exists($this, $methodName)) {
                 $result = call_user_func([$this, $methodName]);
@@ -121,7 +124,7 @@ class Main {
      * @param string $kebabCase
      * @return string
      */
-    public static final function changeCase(string $kebabCase): string {
+    public static function changeCase(string $kebabCase): string {
         $parts = explode('-', $kebabCase);
         $parts = array_map('ucfirst', $parts);
         $result = implode('', $parts);
