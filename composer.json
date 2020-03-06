@@ -28,5 +28,8 @@
         "psr-4": {
             "Vanilla\\KnowledgePorter\\Tests\\": "tests"
         }
-    }
+    },
+    "bin": [
+        "bin/knowledge-porter"
+    ]
 }
