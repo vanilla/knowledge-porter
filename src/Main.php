@@ -11,7 +11,12 @@ use Garden\Cli\Args;
 use Garden\Cli\Cli;
 use Garden\Container\Container;
 use Garden\Container\Reference;
+use Psr\Container\ContainerInterface;
 use Psr\Log\LoggerInterface;
+use Vanilla\KnowledgePorter\Commands\AbstractCommand;
+use Vanilla\KnowledgePorter\HttpClients\HttpCacheMiddleware;
+use Vanilla\KnowledgePorter\HttpClients\HttpLogMiddleware;
+use Vanilla\KnowledgePorter\HttpClients\ZendeskClient;
 
 /**
  * The main program loop.
@@ -49,29 +54,21 @@ final class Main {
 
         try {
             // This is a basic method for each command. You could also create command objects if you would like.
-            $methodName = 'run' . self::changeCase($args->getCommand());
-            if (method_exists($this, $methodName)) {
-                $result = call_user_func([$this, $methodName]);
+            $className = '\\Vanilla\\KnowledgePorter\\Commands\\'.self::changeCase($args->getCommand()).'Command';
+            if ($this->container->has($className)) {
+                /* @var AbstractCommand $command */
+                $command = $this->container->get($className);
+                $command->run();
             } else {
-                throw new \InvalidArgumentException("Cannot find a method for command: ".$args->getCommand());
+                throw new \InvalidArgumentException("Cannot find a class for command: ".$args->getCommand());
             }
-            return $result;
+            return 0;
         } catch (\Exception $ex) {
             /* @var LoggerInterface $log */
             $log = $this->container->get(LoggerInterface::class);
             $log->error($ex->getMessage());
             return $ex->getCode();
         }
-    }
-
-    /**
-     * Run the import.
-     *
-     * @return int
-     */
-    public function runImport(): int {
-        echo "Hello import!\n";
-        return 0;
     }
 
     /**
@@ -84,7 +81,8 @@ final class Main {
 
         $cli->command('import')
             ->description('Import a knowledge base from a source.')
-            ->opt('src-type', 'The type of knowledge base being imported.', true)
+            ->opt('config:c', 'The path to the import config.', true)
+            ->opt('src-type', 'The type of knowledge base being imported.')
             ->opt('dest-type', 'The target of the knowledge base import.')
         ;
 
@@ -104,6 +102,9 @@ final class Main {
             ->defaultRule()
             ->setShared(true)
 
+            ->rule(ContainerInterface::class)
+            ->setAliasOf(Container::class)
+
             ->rule(LoggerInterface::class)
             ->setAliasOf(\Garden\Cli\TaskLogger::class)
 
@@ -112,7 +113,28 @@ final class Main {
             ->setShared(true)
 
             ->rule(\Psr\Log\LoggerAwareInterface::class)
+            ->addCall('setLogger');
+
+
+
+        $di
+            ->rule(\Psr\Log\LoggerAwareInterface::class)
             ->addCall('setLogger')
+
+            ->rule(\Psr\SimpleCache\CacheInterface::class)
+            ->setClass(\Symfony\Component\Cache\Simple\ChainCache::class)
+            ->setFactory(function (): \Psr\SimpleCache\CacheInterface {
+                $fileCache = new \Symfony\Component\Cache\Adapter\FilesystemAdapter('knowledge-porter', strtotime('12 hours'), './cache');
+                $r = new \Symfony\Component\Cache\Psr16Cache($fileCache);
+
+                return $r;
+            })
+            ->setShared(true)
+
+            ->rule(ZendeskClient::class)
+//            ->addCall('addMiddleware', [new Reference(\Vanilla\Analyzer\HttpRetryMiddleware::class)])
+            ->addCall('addMiddleware', [new Reference(HttpLogMiddleware::class)])
+            ->addCall('addMiddleware', [new Reference(HttpCacheMiddleware::class)])
             ;
 
         return $di;
