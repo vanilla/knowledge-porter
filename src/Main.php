@@ -1,0 +1,130 @@
+<?php
+/**
+ * @author Todd Burry <todd@vanillaforums.com>
+ * @copyright 2009-2020 Vanilla Forums Inc.
+ * @license Proprietary
+ */
+
+namespace Vanilla\KnowledgePorter;
+
+use Garden\Cli\Args;
+use Garden\Cli\Cli;
+use Garden\Container\Container;
+use Garden\Container\Reference;
+use Psr\Log\LoggerInterface;
+
+/**
+ * The main program loop.
+ */
+class Main {
+    /**
+     * @var Container
+     */
+    private $container;
+
+    /**
+     * @var Cli
+     */
+    private $cli;
+
+    /**
+     * Main constructor.
+     */
+    public function __construct() {
+        $this->container = $this->createContainer();
+        $this->cli = $this->createCli();
+    }
+
+    /**
+     * Run the program.
+     *
+     * @param array $argv Command line arguments.
+     * @return int Returns the integer result of the command which should be propagated back to the command line.
+     */
+    public function run(array $argv): int {
+        $args = $this->cli->parse($argv);
+        $this->container->setInstance(Args::class, $args);
+
+        try {
+            $methodName = 'run' . self::changeCase($args->getCommand());
+            if (method_exists($this, $methodName)) {
+                $result = call_user_func([$this, $methodName]);
+            } else {
+                throw new \InvalidArgumentException("Cannot find a method for command: ".$args->getCommand());
+            }
+            return $result;
+        } catch (\Exception $ex) {
+            /* @var LoggerInterface $log */
+            $log = $this->container->get(LoggerInterface::class);
+            $log->error($ex->getMessage());
+            return $ex->getCode();
+        }
+    }
+
+    /**
+     * Run the import.
+     *
+     * @return int
+     */
+    public function runImport(): int {
+        echo "Hello import!\n";
+        return 0;
+    }
+
+    /**
+     * Create and configure the command line interface for the application.
+     *
+     * @return Cli
+     */
+    private function createCli(): Cli {
+        $cli = new Cli();
+
+        $cli->command('import')
+            ->description('Import a knowledge base from a source.')
+            ->opt('src-type', 'The type of knowledge base being imported.', true)
+            ->opt('dest-type', 'The target of the knowledge base import.')
+        ;
+
+        return $cli;
+    }
+
+    /**
+     * Create and configure the DI container for the application.
+     *
+     * @return Container
+     */
+    private function createContainer(): Container {
+        $di = new Container();
+
+        $di
+            ->setInstance(Container::class, $di)
+            ->defaultRule()
+            ->setShared(true)
+
+            ->rule(LoggerInterface::class)
+            ->setAliasOf(\Garden\Cli\TaskLogger::class)
+
+            ->rule(\Garden\Cli\TaskLogger::class)
+            ->setConstructorArgs(['logger' => new Reference(\Garden\Cli\StreamLogger::class)])
+            ->setShared(true)
+
+            ->rule(\Psr\Log\LoggerAwareInterface::class)
+            ->addCall('setLogger')
+            ;
+
+        return $di;
+    }
+
+    /**
+     * Change a kebab case variable to pascal case.
+     *
+     * @param string $kebabCase
+     * @return string
+     */
+    public static final function changeCase(string $kebabCase): string {
+        $parts = explode('-', $kebabCase);
+        $parts = array_map('ucfirst', $parts);
+        $result = implode('', $parts);
+        return $result;
+    }
+}
