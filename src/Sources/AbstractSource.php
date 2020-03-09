@@ -20,11 +20,21 @@ abstract class AbstractSource implements LoggerAwareInterface {
      */
     private $destination;
 
+    /** @var array $params */
+    protected $params;
+
     /**
      * @return AbstractDestination
      */
     public function getDestination(): AbstractDestination {
         return $this->destination;
+    }
+
+    /**
+     * @param array $params
+     */
+    public function setParams(array $params) {
+        $this->params = $params;
     }
 
     /**

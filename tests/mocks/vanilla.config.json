@@ -1,0 +1,18 @@
+{
+    "jobs": [
+        "import",
+        "parse",
+        "store",
+        "export",
+        "transform"
+    ],
+    "source": {
+        "type": "vanilla",
+        "baseUrl": "http://dev2.valla.localhost",
+        "token": "va.j3UH-Eg25RgCz3yuKQOt0YVmxHnCYP4T.D74icA.x-TbdE0"
+    },
+    "destination": {
+        "type": "api",
+        "path": "./export"
+    }
+}

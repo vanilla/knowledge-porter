@@ -1,0 +1,18 @@
+{
+    "jobs": [
+        "import",
+        "parse",
+        "store",
+        "export",
+        "transform"
+    ],
+    "source": {
+        "type": "zendesk",
+        "baseUrl": "https://",
+        "token": ""
+    },
+    "destination": {
+        "type": "api",
+        "path": "./export"
+    }
+}
