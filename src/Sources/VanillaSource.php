@@ -24,14 +24,38 @@ class VanillaSource extends AbstractSource {
     }
 
     public function import(): void {
-        $this->vanillaApi->init($this->params['baseUrl'], $this->params['token']);
         $dest = $this->getDestination();
 
-        $categories = $this->vanillaApi->getCategories('en');
-        $kbs = $this->transform($categories, [
-            'foreignID' => 'id',
-            'name' => ['column' => 'name', 'filter' => 'html_entity_decode'],
+//        $categories = $this->vanillaApi->getCategories('en');
+//        $kbs = $this->transform($categories, [
+//            'foreignID' => 'id',
+//            'name' => ['column' => 'name', 'filter' => 'html_entity_decode'],
+//        ]);
+
+        $knowledgeBases = $this->vanillaApi->getKnowledgeBases('en');
+
+        $kbs = $this->transform($knowledgeBases, [
+            'foreignID' => ["column" =>'knowledgeBaseID', "filter" => [$this, "addPrefix"]],
+            'name' => 'name',
+            'description' => 'description',
+            'icon' => 'icon',
+            'urlCode' => ["column" => 'urlCode', "filter" => [$this, "addPrefix"]],
+            'sourceLocale' => 'sourceLocale',
+            'viewType' => 'viewType',
+            'sortArticles' => 'sortArticles',
         ]);
+
         $dest->importKnowledgeBases($kbs);
+    }
+
+    protected function addPrefix($str): string {
+        $newStr = $this->config["prefix"].$str;
+        return $newStr;
+    }
+
+    public function setConfig(array $config): void {
+        $this->config = $config;
+        $this->vanillaApi->setToken($this->config['token']);
+        $this->vanillaApi->setBaseUrl($this->config['baseUrl']);
     }
 }

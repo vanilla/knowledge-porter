@@ -16,6 +16,7 @@ use Psr\Log\LoggerInterface;
 use Vanilla\KnowledgePorter\Commands\AbstractCommand;
 use Vanilla\KnowledgePorter\HttpClients\HttpCacheMiddleware;
 use Vanilla\KnowledgePorter\HttpClients\HttpLogMiddleware;
+use Vanilla\KnowledgePorter\HttpClients\VanillaClient;
 use Vanilla\KnowledgePorter\HttpClients\ZendeskClient;
 
 /**
@@ -135,7 +136,15 @@ final class Main {
 //            ->addCall('addMiddleware', [new Reference(\Vanilla\Analyzer\HttpRetryMiddleware::class)])
             ->addCall('addMiddleware', [new Reference(HttpLogMiddleware::class)])
             ->addCall('addMiddleware', [new Reference(HttpCacheMiddleware::class)])
-            ;
+            ->setShared(false)
+
+
+            ->rule(VanillaClient::class)
+//            ->addCall('addMiddleware', [new Reference(\Vanilla\Analyzer\HttpRetryMiddleware::class)])
+            ->addCall('addMiddleware', [new Reference(HttpLogMiddleware::class)])
+            // ->addCall('addMiddleware', [new Reference(HttpCacheMiddleware::class)])
+            ->setShared(false)
+        ;
 
         return $di;
     }

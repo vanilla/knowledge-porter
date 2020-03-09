@@ -8,11 +8,14 @@
     ],
     "source": {
         "type": "vanilla",
-        "baseUrl": "http://dev2.valla.localhost",
-        "token": "va.j3UH-Eg25RgCz3yuKQOt0YVmxHnCYP4T.D74icA.x-TbdE0"
+        "prefix": "chris-test",
+        "baseUrl": "http://dev.vanilla.localhost",
+        "token": "va.LXbwUEH_qdHVvpH62SW0Ima_aVL_EpLg.1fkKcA.DQDbU0z"
     },
     "destination": {
-        "type": "api",
-        "path": "./export"
+        "type": "vanilla",
+        "path": "./export",
+        "baseUrl": "http://dev.vanilla.localhost",
+        "token": "va.LXbwUEH_qdHVvpH62SW0Ima_aVL_EpLg.1fkKcA.DQDbU0z"
     }
 }

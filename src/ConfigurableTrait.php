@@ -12,7 +12,7 @@ trait ConfigurableTrait {
     /**
      * @var array
      */
-    private $config;
+    protected $config;
 
     /**
      * @return array
