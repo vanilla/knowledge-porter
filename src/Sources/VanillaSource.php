@@ -35,7 +35,6 @@ class VanillaSource extends AbstractSource {
     private function processKnowledgeBases() {
         $dest = $this->getDestination();
         $knowledgeBases = $this->vanillaApi->getKnowledgeBases('en');
-
         $kbs = $this->transform($knowledgeBases, [
             'foreignID' => ["column" =>'knowledgeBaseID', "filter" => [$this, "addPrefix"]],
             'name' => 'name',
@@ -51,7 +50,16 @@ class VanillaSource extends AbstractSource {
     }
 
     private function processKnowledgeCategories() {
-        ;
+        $categories = $this->vanillaApi->getKnowledgeCategories('en');
+        $knowledgeCategories = $this->transform($categories, [
+            'foreignID' => ["column" =>'knowledgeCategoryID', "filter" => [$this, "addPrefix"]],
+            'knowledgeBaseID' => ["column" =>'knowledgeBaseID', "filter" => [$this, "addSmartId"]],
+            'parentID' => ["column" =>'parentID', "filter" => [$this, "addSmartId"]],
+            'name' => 'name',
+            'description' => 'description',
+        ]);
+        $dest = $this->getDestination();
+        $dest->importKnowledgeCategories($knowledgeCategories);
     }
 
     private function processArticles() {
@@ -60,6 +68,12 @@ class VanillaSource extends AbstractSource {
 
     protected function addPrefix($str): string {
         $newStr = $this->config["prefix"].$str;
+        return $newStr;
+    }
+
+
+    protected function addSmartId($str): string {
+        $newStr = '$foreignID:'.$this->config["prefix"].$str;
         return $newStr;
     }
 

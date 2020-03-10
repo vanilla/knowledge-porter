@@ -36,6 +36,19 @@ class VanillaDestination extends AbstractDestination {
         }
     }
 
+    public function importKnowledgeCategories(iterable $rows): void {
+        foreach ($rows as $row) {
+            try {
+                $existing = $this->vanillaApi->getKnowledgeCategoryBySmartID($row["foreignID"]);
+                $this->vanillaApi->patch('/api/v2/knowledge-categories/'.$existing['knowledgeBaseID'], $row);
+            } catch (NotFoundException $ex) {
+                $this->vanillaApi->post('/api/v2/knowledge-categories', $row);
+            }
+
+            return;
+        }
+    }
+
     /**
      * @param array $config
      */
