@@ -27,12 +27,12 @@ class VanillaSource extends AbstractSource {
      * Execute import content actions
      */
     public function import(): void {
-       $this->processKnowledgeBases();
-       $this->processKnowledgeCategories();
-       $this->processArticles();
+       $kbIDs = $this->processKnowledgeBases();
+       $kbCatIDs = $this->processKnowledgeCategories($kbIDs);
+       $this->processArticles($kbCatIDs);
     }
 
-    private function processKnowledgeBases() {
+    private function processKnowledgeBases(): array {
         $dest = $this->getDestination();
         $knowledgeBases = $this->vanillaApi->getKnowledgeBases('en');
         $kbs = $this->transform($knowledgeBases, [
@@ -47,9 +47,10 @@ class VanillaSource extends AbstractSource {
         ]);
 
         $dest->importKnowledgeBases($kbs);
+        return array_column($kbs, 'foreignIDs');
     }
 
-    private function processKnowledgeCategories() {
+    private function processKnowledgeCategories(array $kbIDs): array {
         $categories = $this->vanillaApi->getKnowledgeCategories('en');
         $knowledgeCategories = $this->transform($categories, [
             'foreignID' => ["column" =>'knowledgeCategoryID', "filter" => [$this, "addPrefix"]],
@@ -60,9 +61,10 @@ class VanillaSource extends AbstractSource {
         ]);
         $dest = $this->getDestination();
         $dest->importKnowledgeCategories($knowledgeCategories);
+        return array_column($knowledgeCategories, 'foreignIDs');
     }
 
-    private function processArticles() {
+    private function processArticles(array $kbCatIDs): array {
         ;
     }
 
