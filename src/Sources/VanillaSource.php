@@ -47,7 +47,9 @@ class VanillaSource extends AbstractSource {
         ]);
 
         $dest->importKnowledgeBases($kbs);
-        return array_column($kbs, 'foreignIDs');
+        $array = [];
+        array_push($array, ...$kbs);
+        return array_column($array, 'foreignID');
     }
 
     private function processKnowledgeCategories(array $kbIDs): array {
@@ -61,7 +63,9 @@ class VanillaSource extends AbstractSource {
         ]);
         $dest = $this->getDestination();
         $dest->importKnowledgeCategories($knowledgeCategories);
-        return array_column($knowledgeCategories, 'foreignIDs');
+        $array = [];
+        array_push($array, ...$knowledgeCategories);
+        return array_column($array, 'foreignID');
     }
 
     private function processArticles(array $kbCatIDs): array {
