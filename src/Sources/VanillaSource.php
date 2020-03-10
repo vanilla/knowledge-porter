@@ -23,15 +23,17 @@ class VanillaSource extends AbstractSource {
         $this->basePath = $basePath;
     }
 
+    /**
+     * Execute import content actions
+     */
     public function import(): void {
+       $this->processKnowledgeBases();
+       $this->processKnowledgeCategories();
+       $this->processArticles();
+    }
+
+    private function processKnowledgeBases() {
         $dest = $this->getDestination();
-
-//        $categories = $this->vanillaApi->getCategories('en');
-//        $kbs = $this->transform($categories, [
-//            'foreignID' => 'id',
-//            'name' => ['column' => 'name', 'filter' => 'html_entity_decode'],
-//        ]);
-
         $knowledgeBases = $this->vanillaApi->getKnowledgeBases('en');
 
         $kbs = $this->transform($knowledgeBases, [
@@ -46,6 +48,14 @@ class VanillaSource extends AbstractSource {
         ]);
 
         $dest->importKnowledgeBases($kbs);
+    }
+
+    private function processKnowledgeCategories() {
+        ;
+    }
+
+    private function processArticles() {
+        ;
     }
 
     protected function addPrefix($str): string {
