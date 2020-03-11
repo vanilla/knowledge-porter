@@ -23,6 +23,9 @@ class VanillaDestination extends AbstractDestination {
         $this->vanillaApi = $vanillaApi;
     }
 
+    /**
+     * @param iterable $rows
+     */
     public function importKnowledgeBases(iterable $rows): void {
         foreach ($rows as $row) {
             try {

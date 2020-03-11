@@ -28,22 +28,20 @@ class ZendeskSource extends AbstractSource {
      */
     public function import(): void {
         $kbIDs = $this->processKnowledgeBases();
-        $kbCatIDs = $this->processKnowledgeCategories($kbIDs);
-        $this->processArticles($kbCatIDs);
+        //$kbCatIDs = $this->processKnowledgeCategories($kbIDs);
+        //$this->processArticles($kbCatIDs);
     }
 
     private function processKnowledgeBases(): array {
         $dest = $this->getDestination();
         $knowledgeBases = $this->zendesk->getCategories('en-us');
-        die(print_r($knowledgeBases));
+
         $kbs = $this->transform($knowledgeBases, [
-            'foreignID' => ["column" =>'id', "filter" => [$this, "addPrefix"]],
+            'foreignID' => ['column' =>'id', 'filter' => [$this, 'addPrefix']],
             'name' => 'name',
             'description' => 'description',
-            'urlCode' => ["column" => 'html_url', "filter" => [$this, "extractUrlSlug"]],
-            'sourceLocale' => 'sourceLocale',
-            'viewType' => 'viewType',
-            'sortArticles' => 'sortArticles',
+            'urlCode' => ['column' => 'html_url', 'filter' => [$this, 'extractUrlSlug']],
+            'sourceLocale' => 'source_locale',
         ]);
 
         $dest->importKnowledgeBases($kbs);
@@ -57,10 +55,24 @@ class ZendeskSource extends AbstractSource {
         return $newStr;
     }
 
+    /**
+ * @param $str
+ * @return string
+ */
     protected function extractUrlSlug($str): string {
         $pathInfo = pathinfo($str);
-        $newStr = $this->config["prefix"].$str;
-        return $newStr;
+        $slug = $pathInfo['basename'] ?? null;
+        $urlCode = $this->config["prefix"].$slug;
+        return $urlCode;
+    }
+
+    /**
+     * @param $str
+     * @return string
+     */
+    protected function getSourceLocale($str): string {
+        $locale = $str;
+        return $locale;
     }
 
     public function setConfig(array $config): void {
