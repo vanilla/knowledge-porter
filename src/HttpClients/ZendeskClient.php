@@ -30,6 +30,11 @@ class ZendeskClient extends HttpClient {
         $this->setDefaultHeader('Authorization', "Basic ".base64_encode($token));
     }
 
+    /**
+     * @param string $locale
+     * @param array $query
+     * @return array
+     */
     public function getCategories(string $locale, array $query = []): array {
         $results = $this->get("/help_center/$locale/categories.json")->getBody();
         $zendeskCategories = [];
@@ -46,6 +51,13 @@ class ZendeskClient extends HttpClient {
                 }
             }
         }
+
+        foreach ($zendeskCategories as &$zendeskCategory) {
+            $zendeskCategory["viewType"] = "help";
+            $zendeskCategory["sortArticles"] = "dateInsertedDesc";
+            $zendeskCategory["description"] = ($zendeskCategory['description'] === '') ? $zendeskCategory['name'].' placeholder description' : $zendeskCategory['description'];
+        }
+
         return $zendeskCategories;
     }
 

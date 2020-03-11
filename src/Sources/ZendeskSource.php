@@ -42,12 +42,13 @@ class ZendeskSource extends AbstractSource {
             'description' => 'description',
             'urlCode' => ['column' => 'html_url', 'filter' => [$this, 'extractUrlSlug']],
             'sourceLocale' => 'source_locale',
+            'viewType' => 'viewType',
+            'sortArticles' => 'sortArticles',
         ]);
 
         $dest->importKnowledgeBases($kbs);
-        $array = [];
-        array_push($array, ...$kbs);
-        return array_column($array, 'foreignID');
+
+        return [];
     }
 
     protected function addPrefix($str): string {
@@ -62,7 +63,7 @@ class ZendeskSource extends AbstractSource {
     protected function extractUrlSlug($str): string {
         $pathInfo = pathinfo($str);
         $slug = $pathInfo['basename'] ?? null;
-        $urlCode = $this->config["prefix"].$slug;
+        $urlCode = strtolower($this->config["prefix"].$slug);
         return $urlCode;
     }
 

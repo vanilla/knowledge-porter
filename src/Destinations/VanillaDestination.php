@@ -34,8 +34,6 @@ class VanillaDestination extends AbstractDestination {
             } catch (NotFoundException $ex) {
                 $this->vanillaApi->post('/api/v2/knowledge-bases', $row);
             }
-
-            return;
         }
     }
 
