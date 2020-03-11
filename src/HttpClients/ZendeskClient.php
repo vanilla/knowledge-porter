@@ -18,20 +18,20 @@ class ZendeskClient extends HttpClient {
      */
     private $token;
 
-    public function __construct(string $baseUrl, string $token = '') {
-        parent::__construct($baseUrl);
-        $this->setToken($token);
+    public function __construct(string $baseUrl = '',  HttpHandlerInterface $handler = null) {
+        parent::__construct($baseUrl, $handler);
         $this->setThrowExceptions(true);
+        $this->setDefaultHeader('Content-Type', 'application/json');
     }
 
     public function setToken(string $token) {
         $this->token = $token;
-        $this->setDefaultHeader('Authorization', "Bearer $token");
+        $this->setDefaultHeader('Authorization', "Basic ".base64_encode($token));
     }
 
-    public function getCategories(string $locale, array $query): array {
-        $result = $this->get("/api/v2/help_center/$locale/categories.json");
-        return $result->getBody();
+    public function getCategories(string $locale, array $query = []): array {
+        $result = $this->get("/help_center/$locale/categories.json");
+        return $result->getBody()['categories'];
     }
 
     /**
