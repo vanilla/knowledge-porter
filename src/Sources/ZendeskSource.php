@@ -28,7 +28,7 @@ class ZendeskSource extends AbstractSource {
      */
     public function import(): void {
         $kbIDs = $this->processKnowledgeBases();
-        //$kbCatIDs = $this->processKnowledgeCategories($kbIDs);
+        $kbCatIDs = $this->processKnowledgeCategories($kbIDs);
         //$this->processArticles($kbCatIDs);
     }
 
@@ -51,6 +51,30 @@ class ZendeskSource extends AbstractSource {
         return [];
     }
 
+    private function processKnowledgeCategories(array $kbs): array {
+        $categories = $this->zendesk->getSections('en-us', ['knowledgeBaseID']);
+        $knowledgeCategories = $this->transform($categories, [
+            'foreignID' => ["column" =>'id', "filter" => [$this, "addPrefix"]],
+            'knowledgeBaseID' => ["column" =>'category_id', "filter" => [$this, "knowledgeBaseSmartId"]],
+            'parentID' => ["column" =>'parent_section_id', "filter" => [$this, "calculateParentID"]],
+            'name' => 'name',
+        ]);
+        $dest = $this->getDestination();
+        $dest->importKnowledgeCategories($knowledgeCategories);
+
+//        $array = [];
+//        array_push($array, ...$knowledgeCategories);
+//
+//        return array_column($array, 'foreignID');
+        return [];
+    }
+
+
+    protected function knowledgeBaseSmartId($str): string {
+        $newStr = '$foreignID:'.$this->config["prefix"].$str;
+        return $newStr;
+    }
+
     protected function addPrefix($str): string {
         $newStr = $this->config["prefix"].$str;
         return $newStr;
@@ -65,6 +89,15 @@ class ZendeskSource extends AbstractSource {
         $slug = $pathInfo['basename'] ?? null;
         $urlCode = strtolower($this->config["prefix"].$slug);
         return $urlCode;
+    }
+
+    protected function calculateParentID($str): string {
+        if (!is_null($str)) {
+            $newStr = '$foreignID:' . $this->config["prefix"] . $str;
+        } else {
+            $newStr = 'null';
+        }
+        return $newStr;
     }
 
     /**

@@ -28,7 +28,7 @@ class VanillaDestination extends AbstractDestination {
      */
     public function importKnowledgeBases(iterable $rows): void {
         foreach ($rows as $row) {
-            if ($row['skip'] === 'true') {
+            if (($row['skip'] ?? '') === 'true') {
                 continue;
             }
             try {
@@ -42,14 +42,19 @@ class VanillaDestination extends AbstractDestination {
 
     public function importKnowledgeCategories(iterable $rows): void {
         foreach ($rows as $row) {
-            if ($row['skip'] === 'true') {
+            if (($row['skip'] ?? '') === 'true') {
                 continue;
             }
-            if ($row['rootCategory'] === 'true') {
+            if (($row['rootCategory'] ?? 'false') === 'true') {
                 $result = $this->vanillaApi->get("/api/v2/knowledge-bases/".rawurlencode($row['knowledgeBaseID']));
                 $kb = $result->getBody();
                 $this->vanillaApi->patch('/api/v2/knowledge-categories/'.$kb['rootCategoryID'].'/root', ['foreignID' => $row["foreignID"]]);
             } else {
+                if (($row['parentID'] ?? '') === 'null') {
+                    $result = $this->vanillaApi->get("/api/v2/knowledge-bases/".rawurlencode($row['knowledgeBaseID']));
+                    $kb = $result->getBody();
+                    $row['parentID'] = $kb['rootCategoryID'];
+                };
                 try {
                     $existing = $this->vanillaApi->getKnowledgeCategoryBySmartID($row["foreignID"]);
                     $this->vanillaApi->patch('/api/v2/knowledge-categories/' . $existing['knowledgeCategoryID'], $row);
