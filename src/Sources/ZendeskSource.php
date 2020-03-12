@@ -10,6 +10,10 @@ namespace Vanilla\KnowledgePorter\Sources;
 use Vanilla\KnowledgePorter\HttpClients\ZendeskClient;
 
 class ZendeskSource extends AbstractSource {
+    const LIMIT = 50;
+    const PAGE_START =  1;
+    const PAGE_END = 10;
+
     /**
      * @var ZendeskClient
      */
@@ -33,28 +37,37 @@ class ZendeskSource extends AbstractSource {
     }
 
     private function processKnowledgeBases(): array {
-        $dest = $this->getDestination();
-        $knowledgeBases = $this->zendesk->getCategories('en-us');
+        $perPage = $this->config['perPage'] ?? self::LIMIT;
+        $pageFrom = $this->config['pageFrom'] ?? self::PAGE_START;
+        $pageTo = $this->config['pageTo'] ?? self::PAGE_END;
 
-        $kbs = $this->transform($knowledgeBases, [
-            'foreignID' => ['column' =>'id', 'filter' => [$this, 'addPrefix']],
-            'name' => 'name',
-            'description' => 'description',
-            'urlCode' => ['column' => 'html_url', 'filter' => [$this, 'extractUrlSlug']],
-            'sourceLocale' => 'locale',
-            'viewType' => 'viewType',
-            'sortArticles' => 'sortArticles',
-        ]);
+        for ($page = $pageFrom; $page <= $pageTo; $page++) {
+            $knowledgeBases = $this->zendesk->getCategories('en-us', ['page' => $page, 'per_page' => $perPage]);
+            if (empty($knowledgeBases)) {
+                break;
+            }
 
-        $dest->importKnowledgeBases($kbs);
+
+            $kbs = $this->transform($knowledgeBases, [
+                'foreignID' => ['column' => 'id', 'filter' => [$this, 'addPrefix']],
+                'name' => 'name',
+                'description' => 'description',
+                'urlCode' => ['column' => 'html_url', 'filter' => [$this, 'extractUrlSlug']],
+                'sourceLocale' => 'locale',
+                'viewType' => 'viewType',
+                'sortArticles' => 'sortArticles',
+            ]);
+            $dest = $this->getDestination();
+            $dest->importKnowledgeBases($kbs);
+        }
 
         return [];
     }
 
     private function processKnowledgeCategories(array $kbs): array {
-        $perPage = $this->config['perPage'] ?? 50;
-        $pageFrom = $this->config['pageFrom'] ?? 1;
-        $pageTo = $this->config['pageTo'] ?? 10;
+        $perPage = $this->config['perPage'] ?? self::LIMIT;
+        $pageFrom = $this->config['pageFrom'] ?? self::PAGE_START;
+        $pageTo = $this->config['pageTo'] ?? self::PAGE_END;
         for ($page = $pageFrom; $page <= $pageTo; $page++) {
             $categories = $this->zendesk->getSections('en-us', ['page' => $page, 'per_page' => $perPage]);
             if (empty($categories)) {
