@@ -12,6 +12,10 @@ use Psr\Log\LoggerAwareTrait;
 use Vanilla\KnowledgePorter\ConfigurableTrait;
 use Vanilla\KnowledgePorter\Destinations\AbstractDestination;
 
+/**
+ * Class AbstractSource
+ * @package Vanilla\KnowledgePorter\Sources
+ */
 abstract class AbstractSource implements LoggerAwareInterface {
     use LoggerAwareTrait, ConfigurableTrait;
 
@@ -24,17 +28,12 @@ abstract class AbstractSource implements LoggerAwareInterface {
     protected $params;
 
     /**
+     * Get command destination
+     *
      * @return AbstractDestination
      */
     public function getDestination(): AbstractDestination {
         return $this->destination;
-    }
-
-    /**
-     * @param array $params
-     */
-    public function setParams(array $params) {
-        $this->params = $params;
     }
 
     /**
@@ -44,14 +43,31 @@ abstract class AbstractSource implements LoggerAwareInterface {
         $this->destination = $destination;
     }
 
-    public abstract function import(): void;
+    /**
+     * Import data from source to destination
+     */
+    abstract public function import(): void;
 
+    /**
+     * Apply transformation rules to row set.
+     *
+     * @param iterable $rows
+     * @param array $transformer
+     * @return iterable
+     */
     public function transform(iterable $rows, array $transformer): iterable {
         foreach ($rows as $row) {
             yield $this->transformRow($row, $transformer);
         }
     }
 
+    /**
+     * Apply transformation rules to row.
+     *
+     * @param array $row
+     * @param array $tranformer
+     * @return array
+     */
     protected function transformRow($row, array $tranformer) {
         $result = [];
         foreach ($tranformer as $key => $value) {

@@ -13,6 +13,10 @@ use Vanilla\KnowledgePorter\Destinations\AbstractDestination;
 use Vanilla\KnowledgePorter\Main;
 use Vanilla\KnowledgePorter\Sources\AbstractSource;
 
+/**
+ * Class ImportCommand
+ * @package Vanilla\KnowledgePorter\Commands
+ */
 class ImportCommand extends AbstractCommand {
     /**
      * @var Args
@@ -23,17 +27,24 @@ class ImportCommand extends AbstractCommand {
      */
     private $container;
 
-    /**
-     * @var array
-     */
+    /** @var array $config */
     private $config;
 
+    /**
+     * ImportCommand constructor.
+     *
+     * @param Args $args
+     * @param ContainerInterface $container
+     */
     public function __construct(Args $args, ContainerInterface $container) {
         $this->args = $args;
         $this->container = $container;
     }
 
-    public function run() {
+    /**
+     * @inheritdoc
+     */
+    public function run(): void {
         $this->parseArgs();
 
         $source = $this->createSource();
@@ -45,6 +56,9 @@ class ImportCommand extends AbstractCommand {
         $source->import();
     }
 
+    /**
+     * @throws \Exception When configuration not found or wrong format.
+     */
     private function parseArgs() {
         $configPath = $this->args->getOpt('config');
         if (!file_exists($configPath)) {
@@ -72,7 +86,6 @@ class ImportCommand extends AbstractCommand {
         $sourceClass = '\\Vanilla\\KnowledgePorter\\Sources\\'.Main::changeCase($sourceType).'Source';
         /* @var \Vanilla\KnowledgePorter\Sources\AbstractSource $source */
         $source = $this->container->get($sourceClass);
-        $source->setParams($this->config['source'] ?? []);
         $source->setDestination($dest);
         $source->setConfig($this->config['source']);
         return $source;

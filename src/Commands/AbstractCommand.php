@@ -10,10 +10,15 @@ namespace Vanilla\KnowledgePorter\Commands;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 
+/**
+ * Class AbstractCommand
+ * @package Vanilla\KnowledgePorter\Commands
+ */
 abstract class AbstractCommand implements LoggerAwareInterface {
     use LoggerAwareTrait;
 
-    public abstract function run();
-
-
+    /**
+     * Run cli command
+     */
+    abstract public function run(): void;
 }

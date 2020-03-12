@@ -11,6 +11,10 @@ use Garden\Http\HttpRequest;
 use Garden\Http\HttpResponse;
 use Psr\SimpleCache\CacheInterface;
 
+/**
+ * Class HttpCacheMiddleware
+ * @package Vanilla\KnowledgePorter\HttpClients
+ */
 class HttpCacheMiddleware {
     const NO_CACHE = '-1';
 
@@ -19,10 +23,20 @@ class HttpCacheMiddleware {
      */
     private $cache;
 
+    /**
+     * HttpCacheMiddleware constructor.
+     * @param CacheInterface $cache
+     */
     public function __construct(CacheInterface $cache) {
         $this->cache = $cache;
     }
 
+    /**
+     * Make cache key
+     *
+     * @param HttpRequest $request
+     * @return string
+     */
     private function makeCacheKey(HttpRequest $request) {
         $cacheKey = $request->getUrl();
         $cacheKey = sha1($cacheKey);
@@ -30,6 +44,13 @@ class HttpCacheMiddleware {
         return $cacheKey;
     }
 
+    /**
+     * Invoke cache middleware to http Request
+     *
+     * @param HttpRequest $request
+     * @param callable $next
+     * @return HttpResponse
+     */
     public function __invoke(HttpRequest $request, callable $next): HttpResponse {
         $ttl = (int)$request->getHeader('X-Cache');
 
