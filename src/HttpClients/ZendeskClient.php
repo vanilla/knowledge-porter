@@ -53,6 +53,7 @@ class ZendeskClient extends HttpClient {
         }
 
         foreach ($zendeskCategories as &$zendeskCategory) {
+            $zendeskCategory["locale"] = "en";
             $zendeskCategory["viewType"] = "help";
             $zendeskCategory["sortArticles"] = "dateInsertedDesc";
             $zendeskCategory["description"] = ($zendeskCategory['description'] === '') ? $zendeskCategory['name'].' placeholder description' : $zendeskCategory['description'];
@@ -70,6 +71,23 @@ class ZendeskClient extends HttpClient {
         $results = $this->get("/help_center/$locale/sections.json")->getBody();
 
         return $results['sections'] ?? [];
+    }
+
+    /**
+     * @param string $locale
+     * @param array $query
+     * @return array
+     */
+    public function getArticles(string $locale, array $query = []): array {
+        $results = $this->get("/help_center/$locale/articles.json")->getBody();
+
+        foreach ($results['articles'] as &$article) {
+            $article['format'] = 'html';
+            $article['locale'] = 'en';
+
+        }
+
+        return $results['articles'] ?? [];
     }
 
     /**

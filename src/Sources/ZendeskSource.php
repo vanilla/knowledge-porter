@@ -29,7 +29,7 @@ class ZendeskSource extends AbstractSource {
     public function import(): void {
         $kbIDs = $this->processKnowledgeBases();
         $kbCatIDs = $this->processKnowledgeCategories($kbIDs);
-        //$this->processArticles($kbCatIDs);
+        $this->processKnowledgeArticles($kbCatIDs);
     }
 
     private function processKnowledgeBases(): array {
@@ -41,7 +41,7 @@ class ZendeskSource extends AbstractSource {
             'name' => 'name',
             'description' => 'description',
             'urlCode' => ['column' => 'html_url', 'filter' => [$this, 'extractUrlSlug']],
-            'sourceLocale' => 'source_locale',
+            'sourceLocale' => 'locale',
             'viewType' => 'viewType',
             'sortArticles' => 'sortArticles',
         ]);
@@ -62,10 +62,26 @@ class ZendeskSource extends AbstractSource {
         $dest = $this->getDestination();
         $dest->importKnowledgeCategories($knowledgeCategories);
 
-//        $array = [];
-//        array_push($array, ...$knowledgeCategories);
-//
-//        return array_column($array, 'foreignID');
+        return [];
+    }
+
+    /**
+     * @param array $kbs
+     * @return array
+     */
+    private function processKnowledgeArticles(array $kbs): array {
+        $articles = $this->zendesk->getArticles('en-us');
+        $knowledgeArticles = $this->transform($articles, [
+            'foreignID' => ["column" =>'id', "filter" => [$this, "addPrefix"]],
+            'knowledgeCategoryID' => ["column" =>'section_id', "filter" => [$this, "addPrefix"]],
+            'format' => 'format',
+            'locale' => 'locale',
+            'name' => 'name',
+            'body' => 'body',
+        ]);
+        $dest = $this->getDestination();
+        $dest->importKnowledgeArticles($knowledgeArticles);
+
         return [];
     }
 
@@ -81,9 +97,9 @@ class ZendeskSource extends AbstractSource {
     }
 
     /**
- * @param $str
- * @return string
- */
+     * @param $str
+     * @return string
+     */
     protected function extractUrlSlug($str): string {
         $pathInfo = pathinfo($str);
         $slug = $pathInfo['basename'] ?? null;

@@ -38,6 +38,14 @@ class VanillaClient extends HttpClient {
         return $body;
     }
 
+    public function getCategoriesby(string $locale, array $query = []): array {
+        $result = $this->get("/api/v2/knowledge-categories?locale={$locale}");
+        $body = $result->getBody();
+        echo json_encode($body);
+        return $body;
+    }
+
+
     /**
      * @param string $locale
      * @param array $query
@@ -73,16 +81,29 @@ class VanillaClient extends HttpClient {
     }
 
     /**
-     * @param string $paramSmartID
-     * @param array $query
-     * @return array
-     */
+    * @param string $paramSmartID
+    * @param array $query
+    * @return array
+    */
     public function getKnowledgeCategoryBySmartID(string $paramSmartID, array $query = []): array {
 
         $result = $this->get("/api/v2/knowledge-categories/".rawurlencode('$foreignID:'.$paramSmartID));
         $body = $result->getBody();
         return $body;
     }
+
+    /**
+     * @param string $paramSmartID
+     * @param array $query
+     * @return array
+     */
+    public function getKnowledgeArticleBySmartID(string $paramSmartID, array $query = []): array {
+
+        $result = $this->get("/api/v2/articles/".rawurlencode('$foreignID:'.$paramSmartID));
+        $body = $result->getBody();
+        return $body;
+    }
+
 
     /**
      * @return string

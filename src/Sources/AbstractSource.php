@@ -61,7 +61,7 @@ abstract class AbstractSource implements LoggerAwareInterface {
                 $column = $value['column'];
                 $rowValue = $row[$column];
                 if (isset($value['filter'])) {
-                    $rowValue = call_user_func($value['filter'], $rowValue);
+                    $rowValue = call_user_func($value['filter'], $rowValue, $row);
                 }
                 $result[$key] = $rowValue;
             }

@@ -66,6 +66,34 @@ class VanillaDestination extends AbstractDestination {
     }
 
     /**
+     * @param iterable $rows
+     */
+    public function importKnowledgeArticles(iterable $rows): void {
+        foreach ($rows as $row) {
+            if (($row['skip'] ?? '') === 'true') {
+                continue;
+            }
+
+            try {
+                $existingCategory = $this->vanillaApi->getKnowledgeCategoryBySmartID($row["knowledgeCategoryID"]);
+            } catch (NotFoundException $ex) {
+                $this->logger->warning('knowledge category not found');
+                continue;
+            }
+
+            if ($existingCategory) {
+                $row['knowledgeCategoryID'] = $existingCategory['knowledgeCategoryID'] ?? null;
+                try {
+                    $existingArticle = $this->vanillaApi->getKnowledgeArticleBySmartID($row["foreignID"]);
+                    $this->vanillaApi->patch('/api/v2/articles/'.$existingArticle['articleID'], $row);
+                } catch (NotFoundException $ex) {
+                    $kb = $this->vanillaApi->post('/api/v2/articles', $row)->getBody();
+                }
+            }
+        }
+    }
+
+    /**
      * @param array $config
      */
     public function setConfig(array $config): void {
