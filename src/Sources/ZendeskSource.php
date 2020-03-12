@@ -9,6 +9,10 @@ namespace Vanilla\KnowledgePorter\Sources;
 
 use Vanilla\KnowledgePorter\HttpClients\ZendeskClient;
 
+/**
+ * Class ZendeskSource
+ * @package Vanilla\KnowledgePorter\Sources
+ */
 class ZendeskSource extends AbstractSource {
     const LIMIT = 50;
     const PAGE_START =  1;
@@ -19,10 +23,17 @@ class ZendeskSource extends AbstractSource {
      */
     private $zendesk;
 
+    /**
+     * ZendeskSource constructor.
+     * @param ZendeskClient $zendesk
+     */
     public function __construct(ZendeskClient $zendesk) {
         $this->zendesk = $zendesk;
     }
 
+    /**
+     * @param string $basePath
+     */
     public function setBasePath(string $basePath) {
         $this->basePath = $basePath;
     }
@@ -36,6 +47,11 @@ class ZendeskSource extends AbstractSource {
         $this->processKnowledgeArticles($kbCatIDs);
     }
 
+    /**
+     * Process: GET zendesk categories, POST/PATCH vanilla knowledge bases
+     *
+     * @return array
+     */
     private function processKnowledgeBases(): array {
         $perPage = $this->config['perPage'] ?? self::LIMIT;
         $pageFrom = $this->config['pageFrom'] ?? self::PAGE_START;
@@ -64,6 +80,12 @@ class ZendeskSource extends AbstractSource {
         return [];
     }
 
+    /**
+     * Process: GET zendesk sections, POST/PATCH vanilla knowledge categories
+     *
+     * @param array $kbs
+     * @return array
+     */
     private function processKnowledgeCategories(array $kbs): array {
         $perPage = $this->config['perPage'] ?? self::LIMIT;
         $pageFrom = $this->config['pageFrom'] ?? self::PAGE_START;
@@ -87,6 +109,8 @@ class ZendeskSource extends AbstractSource {
     }
 
     /**
+     * Process: GET zendesk articles, POST/PATCH vanilla knowledge base articles
+     *
      * @param array $kbs
      * @return array
      */
@@ -106,19 +130,32 @@ class ZendeskSource extends AbstractSource {
         return [];
     }
 
-
+    /**
+     * Prepare knowledge base smart id.
+     *
+     * @param mixed $str
+     * @return string
+     */
     protected function knowledgeBaseSmartId($str): string {
         $newStr = '$foreignID:'.$this->config["prefix"].$str;
         return $newStr;
     }
 
+    /**
+     * Add foreignID prefix to string.
+     *
+     * @param mixed $str
+     * @return string
+     */
     protected function addPrefix($str): string {
         $newStr = $this->config["prefix"].$str;
         return $newStr;
     }
 
     /**
-     * @param $str
+     * Extract url slug from zendesk category url.
+     *
+     * @param mixed $str
      * @return string
      */
     protected function extractUrlSlug($str): string {
@@ -128,6 +165,12 @@ class ZendeskSource extends AbstractSource {
         return $urlCode;
     }
 
+    /**
+     * Calculate parentID smart key.
+     *
+     * @param mixed $str
+     * @return string
+     */
     protected function calculateParentID($str): string {
         if (!is_null($str)) {
             $newStr = '$foreignID:' . $this->config["prefix"] . $str;
@@ -138,7 +181,9 @@ class ZendeskSource extends AbstractSource {
     }
 
     /**
-     * @param $str
+     * Get source locale
+     *
+     * @param mixed $str
      * @return string
      */
     protected function getSourceLocale($str): string {
@@ -146,6 +191,9 @@ class ZendeskSource extends AbstractSource {
         return $locale;
     }
 
+    /**
+     * @param array $config
+     */
     public function setConfig(array $config): void {
         $this->config = $config;
         $this->zendesk->setToken($this->config['token']);

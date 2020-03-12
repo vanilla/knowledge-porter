@@ -85,12 +85,21 @@ class VanillaSource extends AbstractSource {
         return $newStr;
     }
 
-
+    /**
+     * @param mixed $str
+     * @return string
+     */
     protected function knowledgeCategorySmartId($str): string {
         $newStr = '$foreignID:'.$this->config["prefix"].$str;
         return $newStr;
     }
 
+    /**
+     * Prepare smartID for parentID field
+     *
+     * @param mixed $str
+     * @return string
+     */
     protected function calculateParentID($str): string {
         if ($str != "-1") {
             $newStr = '$foreignID:' . $this->config["prefix"] . $str;
@@ -100,6 +109,12 @@ class VanillaSource extends AbstractSource {
         return $newStr;
     }
 
+    /**
+     * Validate parentID field
+     *
+     * @param mixed $str
+     * @return string
+     */
     protected function isRoot($str): string {
         if ($str == "-1") {
             $newStr = 'true';
@@ -110,11 +125,25 @@ class VanillaSource extends AbstractSource {
         return $newStr;
     }
 
+    /**
+     * Detect if knowledge base is in scope of this import command
+     * Note: this is done for specific case when source and destination are the same instance.
+     *
+     * @param mixed $str Check foreignID field
+     * @return string
+     */
     protected function isOrigin($str): string {
         $newStr = !empty($str) ? 'true' : 'false';
         return $newStr;
     }
 
+    /**
+     * Detect if knowledge base is in scope of this import command
+     * Note: this is done for specific case when source and destination are the same instance.
+     *
+     * @param mixed $str
+     * @return string
+     */
     protected function isOriginKb($str): string {
         $max = $this->config['maxKbID'] ?? false;
         if ($max) {
@@ -126,11 +155,22 @@ class VanillaSource extends AbstractSource {
         return $newStr;
     }
 
+    /**
+     * Generate knowledge base smartID.
+     *
+     * @param mixed $str
+     * @return string
+     */
     protected function knowledgeBaseSmartId($str): string {
         $newStr = '$foreignID:'.$this->config["prefix"].$str;
         return $newStr;
     }
 
+    /**
+     * Set config
+     *
+     * @param array $config
+     */
     public function setConfig(array $config): void {
         $this->config = $config;
         $this->vanillaApi->setToken($this->config['token']);
