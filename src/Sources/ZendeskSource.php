@@ -43,9 +43,9 @@ class ZendeskSource extends AbstractSource {
      * Execute import content actions
      */
     public function import(): void {
-        //$kbIDs = $this->processKnowledgeBases();
-        //$kbCatIDs = $this->processKnowledgeCategories($kbIDs);
-        $this->processKnowledgeArticles([]);
+        $kbIDs = $this->processKnowledgeBases();
+        $kbCatIDs = $this->processKnowledgeCategories($kbIDs);
+        $this->processKnowledgeArticles($kbCatIDs);
     }
 
     /**
@@ -226,7 +226,7 @@ class ZendeskSource extends AbstractSource {
 
     /**
      * Set config values.
-     * 
+     *
      * @param array $config
      */
     public function setConfig(array $config): void {
