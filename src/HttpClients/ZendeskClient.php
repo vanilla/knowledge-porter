@@ -35,7 +35,7 @@ class ZendeskClient extends HttpClient {
      * @param array $query
      * @return array
      */
-    public function getCategories(string $locale, array $query = []): array {
+    public function getCategories(string $locale, array $query = []): iterable {
         $results = $this->get("/help_center/$locale/categories.json")->getBody();
         $zendeskCategories = [];
 
@@ -46,7 +46,7 @@ class ZendeskClient extends HttpClient {
                 $count = 2;
                 while ($count <= $pageCount) {
                     $results = $this->get("/help_center/$locale/categories.json?page={$count}")->getBody();
-                    $zendeskCategories +=  $results['categories'] ?? null;
+                    $zendeskCategories += $results['categories'] ?? null;
                     $count++;
                 }
             }
