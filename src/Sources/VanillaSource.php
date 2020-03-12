@@ -44,32 +44,40 @@ class VanillaSource extends AbstractSource {
             'sourceLocale' => 'sourceLocale',
             'viewType' => 'viewType',
             'sortArticles' => 'sortArticles',
+            'skip' => ["column" =>'foreignID', "filter" => [$this, "isOrigin"]],
         ]);
 
         $dest->importKnowledgeBases($kbs);
-        $array = [];
-        array_push($array, ...$kbs);
-        return array_column($array, 'foreignID');
+//        $array = [];
+//        array_push($array, ...$kbs);
+//        return array_column($array, 'foreignID');
+        return [];
     }
 
-    private function processKnowledgeCategories(array $kbIDs): array {
-        $categories = $this->vanillaApi->getKnowledgeCategories('en');
+    private function processKnowledgeCategories(array $kbs): array {
+        $categories = $this->vanillaApi->getKnowledgeCategories('en', ['knowledgeBaseID']);
         $knowledgeCategories = $this->transform($categories, [
             'foreignID' => ["column" =>'knowledgeCategoryID', "filter" => [$this, "addPrefix"]],
-            'knowledgeBaseID' => ["column" =>'knowledgeBaseID', "filter" => [$this, "addSmartId"]],
-            'parentID' => ["column" =>'parentID', "filter" => [$this, "addSmartId"]],
+            'knowledgeBaseID' => ["column" =>'knowledgeBaseID', "filter" => [$this, "knowledgeBaseSmartId"]],
+            'parentID' => ["column" =>'parentID', "filter" => [$this, "calculateParentID"]],
             'name' => 'name',
-            'description' => 'description',
+            'rootCategory' => ["column" =>'parentID', "filter" => [$this, "isRoot"]],
+            'sourceParentID' => ["column" =>'parentID', "filter" => [$this, "isRoot"]],
+            'skip' => ["column" =>'knowledgeBaseID', "filter" => [$this, "isOriginKb"]],
+
         ]);
         $dest = $this->getDestination();
         $dest->importKnowledgeCategories($knowledgeCategories);
-        $array = [];
-        array_push($array, ...$knowledgeCategories);
-        return array_column($array, 'foreignID');
+
+//        $array = [];
+//        array_push($array, ...$knowledgeCategories);
+//
+//        return array_column($array, 'foreignID');
+        return [];
     }
 
     private function processArticles(array $kbCatIDs): array {
-        ;
+        return [];
     }
 
     protected function addPrefix($str): string {
@@ -78,7 +86,47 @@ class VanillaSource extends AbstractSource {
     }
 
 
-    protected function addSmartId($str): string {
+    protected function knowledgeCategorySmartId($str): string {
+        $newStr = '$foreignID:'.$this->config["prefix"].$str;
+        return $newStr;
+    }
+
+    protected function calculateParentID($str): string {
+        if ($str != "-1") {
+            $newStr = '$foreignID:' . $this->config["prefix"] . $str;
+        } else {
+            $newStr = $str;
+        }
+        return $newStr;
+    }
+
+    protected function isRoot($str): string {
+        if ($str == "-1") {
+            $newStr = 'true';
+        } else {
+            $newStr = 'false';
+        }
+
+        return $newStr;
+    }
+
+    protected function isOrigin($str): string {
+        $newStr = !empty($str) ? 'true' : 'false';
+        return $newStr;
+    }
+
+    protected function isOriginKb($str): string {
+        $max = $this->config['maxKbID'] ?? false;
+        if ($max) {
+            $newStr = ($str > $max) ? "true" : 'false';
+        } else {
+            $newStr = 'false';
+        }
+
+        return $newStr;
+    }
+
+    protected function knowledgeBaseSmartId($str): string {
         $newStr = '$foreignID:'.$this->config["prefix"].$str;
         return $newStr;
     }

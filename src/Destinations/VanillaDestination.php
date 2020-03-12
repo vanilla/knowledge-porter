@@ -28,25 +28,40 @@ class VanillaDestination extends AbstractDestination {
      */
     public function importKnowledgeBases(iterable $rows): void {
         foreach ($rows as $row) {
+            if (($row['skip'] ?? '') === 'true') {
+                continue;
+            }
             try {
                 $existing = $this->vanillaApi->getKnowledgeBaseBySmartID($row["foreignID"]);
                 $this->vanillaApi->patch('/api/v2/knowledge-bases/'.$existing['knowledgeBaseID'], $row);
             } catch (NotFoundException $ex) {
-                $this->vanillaApi->post('/api/v2/knowledge-bases', $row);
+                $kb = $this->vanillaApi->post('/api/v2/knowledge-bases', $row)->getBody();
             }
         }
     }
 
     public function importKnowledgeCategories(iterable $rows): void {
         foreach ($rows as $row) {
-            try {
-                $existing = $this->vanillaApi->getKnowledgeCategoryBySmartID($row["foreignID"]);
-                $this->vanillaApi->patch('/api/v2/knowledge-categories/'.$existing['knowledgeBaseID'], $row);
-            } catch (NotFoundException $ex) {
-                $this->vanillaApi->post('/api/v2/knowledge-categories', $row);
+            if (($row['skip'] ?? '') === 'true') {
+                continue;
             }
-
-            return;
+            if (($row['rootCategory'] ?? 'false') === 'true') {
+                $result = $this->vanillaApi->get("/api/v2/knowledge-bases/".rawurlencode($row['knowledgeBaseID']));
+                $kb = $result->getBody();
+                $this->vanillaApi->patch('/api/v2/knowledge-categories/'.$kb['rootCategoryID'].'/root', ['foreignID' => $row["foreignID"]]);
+            } else {
+                if (($row['parentID'] ?? '') === 'null') {
+                    $result = $this->vanillaApi->get("/api/v2/knowledge-bases/".rawurlencode($row['knowledgeBaseID']));
+                    $kb = $result->getBody();
+                    $row['parentID'] = $kb['rootCategoryID'];
+                };
+                try {
+                    $existing = $this->vanillaApi->getKnowledgeCategoryBySmartID($row["foreignID"]);
+                    $this->vanillaApi->patch('/api/v2/knowledge-categories/' . $existing['knowledgeCategoryID'], $row);
+                } catch (NotFoundException $ex) {
+                    $this->vanillaApi->post('/api/v2/knowledge-categories', $row);
+                }
+            }
         }
     }
 
