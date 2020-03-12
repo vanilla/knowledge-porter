@@ -68,7 +68,8 @@ class ZendeskClient extends HttpClient {
      * @return array
      */
     public function getSections(string $locale, array $query = []): array {
-        $results = $this->get("/help_center/$locale/sections.json")->getBody();
+        $queryParams = empty($query) ? '' : '?'.http_build_query($query);
+        $results = $this->get("/help_center/$locale/sections.json".$queryParams)->getBody();
 
         return $results['sections'] ?? [];
     }

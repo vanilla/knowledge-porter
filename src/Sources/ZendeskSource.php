@@ -52,15 +52,23 @@ class ZendeskSource extends AbstractSource {
     }
 
     private function processKnowledgeCategories(array $kbs): array {
-        $categories = $this->zendesk->getSections('en-us', ['knowledgeBaseID']);
-        $knowledgeCategories = $this->transform($categories, [
-            'foreignID' => ["column" =>'id', "filter" => [$this, "addPrefix"]],
-            'knowledgeBaseID' => ["column" =>'category_id', "filter" => [$this, "knowledgeBaseSmartId"]],
-            'parentID' => ["column" =>'parent_section_id', "filter" => [$this, "calculateParentID"]],
-            'name' => 'name',
-        ]);
-        $dest = $this->getDestination();
-        $dest->importKnowledgeCategories($knowledgeCategories);
+        $perPage = $this->config['perPage'] ?? 50;
+        $pageFrom = $this->config['pageFrom'] ?? 1;
+        $pageTo = $this->config['pageTo'] ?? 10;
+        for ($page = $pageFrom; $page <= $pageTo; $page++) {
+            $categories = $this->zendesk->getSections('en-us', ['page' => $page, 'per_page' => $perPage]);
+            if (empty($categories)) {
+                break;
+            }
+            $knowledgeCategories = $this->transform($categories, [
+                'foreignID' => ["column" => 'id', "filter" => [$this, "addPrefix"]],
+                'knowledgeBaseID' => ["column" => 'category_id', "filter" => [$this, "knowledgeBaseSmartId"]],
+                'parentID' => ["column" => 'parent_section_id', "filter" => [$this, "calculateParentID"]],
+                'name' => 'name',
+            ]);
+            $dest = $this->getDestination();
+            $dest->importKnowledgeCategories($knowledgeCategories);
+        }
 
         return [];
     }
