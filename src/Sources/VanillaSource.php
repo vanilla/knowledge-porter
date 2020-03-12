@@ -9,16 +9,29 @@ namespace Vanilla\KnowledgePorter\Sources;
 
 use Vanilla\KnowledgePorter\HttpClients\VanillaClient;
 
+/**
+ * Class VanillaSource
+ * @package Vanilla\KnowledgePorter\Sources
+ */
 class VanillaSource extends AbstractSource {
     /**
      * @var VanillaClient
      */
     private $vanillaApi;
 
+    /**
+     * VanillaSource constructor.
+     * @param VanillaClient $vanilla
+     */
     public function __construct(VanillaClient $vanilla) {
         $this->vanillaApi = $vanilla;
     }
 
+    /**
+     * Set Vanilla api base path
+     *
+     * @param string $basePath
+     */
     public function setBasePath(string $basePath) {
         $this->basePath = $basePath;
     }
@@ -27,11 +40,16 @@ class VanillaSource extends AbstractSource {
      * Execute import content actions
      */
     public function import(): void {
-       $kbIDs = $this->processKnowledgeBases();
-       $kbCatIDs = $this->processKnowledgeCategories($kbIDs);
-       $this->processArticles($kbCatIDs);
+        $kbIDs = $this->processKnowledgeBases();
+        $kbCatIDs = $this->processKnowledgeCategories($kbIDs);
+        $this->processArticles($kbCatIDs);
     }
 
+    /**
+     * Process: GET knowledge bases, POST/PATCH vanilla knowledge bases
+     *
+     * @return array
+     */
     private function processKnowledgeBases(): array {
         $dest = $this->getDestination();
         $knowledgeBases = $this->vanillaApi->getKnowledgeBases('en');
@@ -54,6 +72,12 @@ class VanillaSource extends AbstractSource {
         return [];
     }
 
+    /**
+     * Process: GET vanilla kb categories, POST/PATCH vanilla knowledge categories
+     *
+     * @param array $kbs
+     * @return array
+     */
     private function processKnowledgeCategories(array $kbs): array {
         $categories = $this->vanillaApi->getKnowledgeCategories('en', ['knowledgeBaseID']);
         $knowledgeCategories = $this->transform($categories, [
@@ -76,16 +100,30 @@ class VanillaSource extends AbstractSource {
         return [];
     }
 
+    /**
+     * Process: GET vanilla kb articles, POST/PATCH vanilla knowledge base articles
+     *
+     * @param array $kbCatIDs
+     * @return array
+     */
     private function processArticles(array $kbCatIDs): array {
         return [];
     }
 
+    /**
+     * Add prefix.
+     *
+     * @param mixed $str
+     * @return string
+     */
     protected function addPrefix($str): string {
         $newStr = $this->config["prefix"].$str;
         return $newStr;
     }
 
     /**
+     * Prepare smartID for knowledgeCategoryID field
+     *
      * @param mixed $str
      * @return string
      */

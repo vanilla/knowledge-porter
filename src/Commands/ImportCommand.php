@@ -86,7 +86,6 @@ class ImportCommand extends AbstractCommand {
         $sourceClass = '\\Vanilla\\KnowledgePorter\\Sources\\'.Main::changeCase($sourceType).'Source';
         /* @var \Vanilla\KnowledgePorter\Sources\AbstractSource $source */
         $source = $this->container->get($sourceClass);
-        $source->setParams($this->config['source'] ?? []);
         $source->setDestination($dest);
         $source->setConfig($this->config['source']);
         return $source;
