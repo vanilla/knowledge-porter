@@ -103,7 +103,7 @@ class ZendeskClient extends HttpClient {
         $results = $this->get("/help_center/$locale/articles.json".$queryParams)->getBody();
 
         foreach ($results['articles'] as &$article) {
-            $article['format'] = 'html';
+            $article['format'] = 'wysiwyg';
             $article['locale'] = 'en';
         }
         return $results['articles'] ?? [];
