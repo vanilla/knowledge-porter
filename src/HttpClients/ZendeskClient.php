@@ -19,18 +19,31 @@ class ZendeskClient extends HttpClient {
      */
     private $token;
 
-    public function __construct(string $baseUrl = '',  HttpHandlerInterface $handler = null) {
+    /**
+     * ZendeskClient constructor.
+     *
+     * @param string $baseUrl
+     * @param HttpHandlerInterface|null $handler
+     */
+    public function __construct(string $baseUrl = '', HttpHandlerInterface $handler = null) {
         parent::__construct($baseUrl, $handler);
         $this->setThrowExceptions(true);
         $this->setDefaultHeader('Content-Type', 'application/json');
     }
 
+    /**
+     * Set api access token
+     *
+     * @param string $token
+     */
     public function setToken(string $token) {
         $this->token = $token;
         $this->setDefaultHeader('Authorization', "Basic ".base64_encode($token));
     }
 
     /**
+     * Execute GET /help_center/$locale/categories.json request against zendesk api.
+     *
      * @param string $locale
      * @param array $query
      * @return array
@@ -57,13 +70,16 @@ class ZendeskClient extends HttpClient {
             $zendeskCategory["locale"] = "en";
             $zendeskCategory["viewType"] = "help";
             $zendeskCategory["sortArticles"] = "dateInsertedDesc";
-            $zendeskCategory["description"] = ($zendeskCategory['description'] === '') ? $zendeskCategory['name'].' placeholder description' : $zendeskCategory['description'];
+            if ($zendeskCategory['description'] === '') {
+                $zendeskCategory["description"] = $zendeskCategory['name'].' placeholder description';
+            }
         }
-
         return $zendeskCategories;
     }
 
     /**
+     * Execute GET /help_center/$locale/sections.json request against zendesk api.
+     *
      * @param string $locale
      * @param array $query
      * @return array
@@ -76,6 +92,8 @@ class ZendeskClient extends HttpClient {
     }
 
     /**
+     * Execute GET /help_center/$locale/articles.json request against zendesk api.
+     *
      * @param string $locale
      * @param array $query
      * @return array
@@ -86,9 +104,7 @@ class ZendeskClient extends HttpClient {
         foreach ($results['articles'] as &$article) {
             $article['format'] = 'html';
             $article['locale'] = 'en';
-
         }
-
         return $results['articles'] ?? [];
     }
 

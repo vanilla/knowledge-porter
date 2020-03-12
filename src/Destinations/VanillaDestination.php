@@ -7,10 +7,13 @@
 
 namespace Vanilla\KnowledgePorter\Destinations;
 
-
 use Vanilla\KnowledgePorter\HttpClients\NotFoundException;
 use Vanilla\KnowledgePorter\HttpClients\VanillaClient;
 
+/**
+ * Class VanillaDestination
+ * @package Vanilla\KnowledgePorter\Destinations
+ */
 class VanillaDestination extends AbstractDestination {
 
     /**
@@ -18,7 +21,10 @@ class VanillaDestination extends AbstractDestination {
      */
     private $vanillaApi;
 
-
+    /**
+     * VanillaDestination constructor.
+     * @param VanillaClient $vanillaApi
+     */
     public function __construct(VanillaClient $vanillaApi) {
         $this->vanillaApi = $vanillaApi;
     }
@@ -40,6 +46,9 @@ class VanillaDestination extends AbstractDestination {
         }
     }
 
+    /**
+     * @param iterable $rows
+     */
     public function importKnowledgeCategories(iterable $rows): void {
         foreach ($rows as $row) {
             if (($row['skip'] ?? '') === 'true') {

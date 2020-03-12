@@ -1,2 +1,2 @@
 /vendor/
-./tests/mocks/vanilla.config.json
+./tests/mocks/*
