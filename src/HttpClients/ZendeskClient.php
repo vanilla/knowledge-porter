@@ -79,8 +79,9 @@ class ZendeskClient extends HttpClient {
      * @param array $query
      * @return array
      */
-    public function getArticles(string $locale, array $query = []): array {
-        $results = $this->get("/help_center/$locale/articles.json")->getBody();
+    public function getArticles(string $locale, array $query = []): iterable {
+        $queryParams = empty($query) ? '' : '?'.http_build_query($query);
+        $results = $this->get("/help_center/$locale/articles.json".$queryParams)->getBody();
 
         foreach ($results['articles'] as &$article) {
             $article['format'] = 'html';

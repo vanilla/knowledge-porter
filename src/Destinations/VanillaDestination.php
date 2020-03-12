@@ -87,7 +87,9 @@ class VanillaDestination extends AbstractDestination {
                     $existingArticle = $this->vanillaApi->getKnowledgeArticleBySmartID($row["foreignID"]);
                     $this->vanillaApi->patch('/api/v2/articles/'.$existingArticle['articleID'], $row);
                 } catch (NotFoundException $ex) {
-                    $kb = $this->vanillaApi->post('/api/v2/articles', $row)->getBody();
+                    $this->vanillaApi->post('/api/v2/articles', $row)->getBody();
+                    //$this->vanillaApi->put('/api/v2/')
+
                 }
             }
         }

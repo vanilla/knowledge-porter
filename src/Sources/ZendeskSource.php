@@ -78,18 +78,26 @@ class ZendeskSource extends AbstractSource {
      * @return array
      */
     private function processKnowledgeArticles(array $kbs): array {
-        $articles = $this->zendesk->getArticles('en-us');
-        $knowledgeArticles = $this->transform($articles, [
-            'foreignID' => ["column" =>'id', "filter" => [$this, "addPrefix"]],
-            'knowledgeCategoryID' => ["column" =>'section_id', "filter" => [$this, "addPrefix"]],
-            'format' => 'format',
-            'locale' => 'locale',
-            'name' => 'name',
-            'body' => 'body',
-        ]);
-        $dest = $this->getDestination();
-        $dest->importKnowledgeArticles($knowledgeArticles);
+        $perPage = $this->config['perPage'] ?? 50;
+        $pageFrom = $this->config['pageFrom'] ?? 1;
+        $pageTo = $this->config['pageTo'] ?? 10;
 
+        for ($page = $pageFrom; $page <= $pageTo; $page++) {
+            $articles = $this->zendesk->getArticles('en-us', ['page' => $page, 'per_page' => $perPage]);
+            if (empty($articles)) {
+                break;
+            }
+            $knowledgeArticles = $this->transform($articles, [
+                'foreignID' => ["column" => 'id', "filter" => [$this, "addPrefix"]],
+                'knowledgeCategoryID' => ["column" => 'section_id', "filter" => [$this, "addPrefix"]],
+                'format' => 'format',
+                'locale' => 'locale',
+                'name' => 'name',
+                'body' => 'body',
+            ]);
+            $dest = $this->getDestination();
+            $dest->importKnowledgeArticles($knowledgeArticles);
+        }
         return [];
     }
 
