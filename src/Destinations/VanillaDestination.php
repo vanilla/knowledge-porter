@@ -92,13 +92,13 @@ class VanillaDestination extends AbstractDestination {
 
             if ($existingCategory) {
                 $row['knowledgeCategoryID'] = $existingCategory['knowledgeCategoryID'] ?? null;
+                $alias = $row["alias"] ?? null;
                 try {
                     $existingArticle = $this->vanillaApi->getKnowledgeArticleBySmartID($row["foreignID"]);
                     $this->vanillaApi->patch('/api/v2/articles/'.$existingArticle['articleID'], $row);
                 } catch (NotFoundException $ex) {
-                    $this->vanillaApi->post('/api/v2/articles', $row)->getBody();
-                    //$this->vanillaApi->put('/api/v2/')
-
+                    $response = $this->vanillaApi->post('/api/v2/articles', $row)->getBody();
+                    $this->vanillaApi->put('/api/v2/articles/'.$response['articleID'].'/aliases',["aliases" => [$alias]]);
                 }
             }
         }

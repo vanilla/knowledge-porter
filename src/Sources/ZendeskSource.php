@@ -7,6 +7,7 @@
 
 namespace Vanilla\KnowledgePorter\Sources;
 
+use DOMDocument;
 use Vanilla\KnowledgePorter\HttpClients\ZendeskClient;
 
 /**
@@ -127,7 +128,8 @@ class ZendeskSource extends AbstractSource {
                 'format' => 'format',
                 'locale' => 'locale',
                 'name' => 'name',
-                'body' => 'body',
+                'body' => ['column' => 'body', 'filter' => [$this, 'parseUrls']],
+                'alias' => ['column' => 'id', 'filter' => [$this, 'setAlias']],
             ]);
             $dest = $this->getDestination();
             $dest->importKnowledgeArticles($knowledgeArticles);
@@ -171,6 +173,18 @@ class ZendeskSource extends AbstractSource {
     }
 
     /**
+     * Set Alias for Zendesk Article.
+     *
+     * @param mixed $id
+     * @return string
+     */
+    protected function setAlias($id): string {
+        // to refactor, temporary solution to test out aliases.
+        $basePath = "/hc/en-us/articles/".$id;
+        return $basePath;
+    }
+
+    /**
      * Calculate parentID smart key.
      *
      * @param mixed $str
@@ -197,6 +211,20 @@ class ZendeskSource extends AbstractSource {
     }
 
     /**
+     * Parse urls from a string.
+     *
+     * @param $body
+     * @return string
+     */
+    protected function parseUrls($body): string {
+        // could use a preg_replace here.  As discussed with Alex use this over domDocument.
+        $body = str_replace($this->config['sourceDomain'], $this->config['targetDomain'], $body);
+        return $body;
+    }
+
+    /**
+     * Set config values.
+     *
      * @param array $config
      */
     public function setConfig(array $config): void {
