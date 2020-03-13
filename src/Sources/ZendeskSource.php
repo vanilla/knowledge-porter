@@ -177,6 +177,7 @@ class ZendeskSource extends AbstractSource {
      *
      * @param mixed $id
      * @return string
+     * @todo Use the path from the `html_url` and make sure to prefix with the prefix like: `<prefix>/<path>`. Hint: `parse_url()`.
      */
     protected function setAlias($id): string {
         // to refactor, temporary solution to test out aliases.
