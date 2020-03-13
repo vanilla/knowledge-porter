@@ -93,11 +93,12 @@ class VanillaDestination extends AbstractDestination {
             if ($existingCategory) {
                 $row['knowledgeCategoryID'] = $existingCategory['knowledgeCategoryID'] ?? null;
                 $alias = $row["alias"] ?? null;
+                unset($row['alias']);
                 try {
                     // This should probably grab from the edit endpoint because that's what you'll be comparing to.
                     $existingArticle = $this->vanillaApi->getKnowledgeArticleBySmartID($row["foreignID"]);
                     $patch = $this->compareFields($existingArticle, $row);
-                    if (empty($patch)) {
+                    if (!empty($patch)) {
                         $this->vanillaApi->patch('/api/v2/articles/' . $existingArticle['articleID'], $patch);
                     }
                 } catch (NotFoundException $ex) {

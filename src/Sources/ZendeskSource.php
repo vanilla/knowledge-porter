@@ -166,12 +166,20 @@ class ZendeskSource extends AbstractSource {
      *
      * @param mixed $id
      * @return string
-     * @todo Use the path from the `html_url` and make sure to prefix with the prefix like: `<prefix>/<path>`. Hint: `parse_url()`.
+     * @todo Make sure to prefix with the prefix like: `<prefix>/<path>`. Hint: `parse_url()`.
      */
     protected function setAlias($id): string {
         // to refactor, temporary solution to test out aliases.
-        $basePath = "/hc/en-us/articles/".$id;
+        $basePath = "/$prefix/hc/en-us/articles/".$id;
         return $basePath;
+
+        // Our config: https://ourdomain.com or https://ourdomain.com/node
+
+        // Old URL https://theirdomain.com/hc/en-us/articles/1234-xxxx
+        // New URL: https://ourdomain.com/kb/articles/aliases/prefix/hc/en-us/articles/1234
+        // Later Route: ^https://ourdomain.com/kb/articles/aliases/prefix/hc/en-us/articles/(\d+) -> ^https://ourdomain.com/kb/articles/aliases/prefix/hc/en-us/articles/$1
+
+        // Rule: htps://theirdomain.com -> https://ourdomain.com/kb/articles/aliases/prefix
     }
 
     /**
@@ -213,6 +221,11 @@ class ZendeskSource extends AbstractSource {
         if ($sourceDomain & $targetDomain) {
             $body = str_replace($this->config['sourceDomain'], $this->config['targetDomain'], $body);
         }
+        return $body;
+    }
+
+    public static function replaceUrls(string $body, string $sourceDomain, string $targetBaseUrl, string $prefix) {
+        $body = str_replace($sourceDomain, $targetBaseUrl, $body);
         return $body;
     }
 
