@@ -1,5 +1,9 @@
 <?php
-
+/**
+ * @author Todd Burry <todd@vanillaforums.com>
+ * @copyright 2009-2020 Vanilla Forums Inc.
+ * @license Proprietary
+ */
 
 namespace Vanilla\KnowledgePorter\HttpClients;
 
@@ -12,6 +16,7 @@ use Garden\Http\HttpResponseException;
 class NotFoundException extends HttpResponseException {
     /**
      * NotFoundException constructor.
+     *
      * @param HttpResponse $response
      * @param string $message
      */
