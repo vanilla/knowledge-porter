@@ -220,7 +220,11 @@ class ZendeskSource extends AbstractSource {
      */
     protected function parseUrls($body): string {
         // could use a preg_replace here.  As discussed with Alex use this over domDocument.
-        $body = str_replace($this->config['sourceDomain'], $this->config['targetDomain'], $body);
+        $sourceDomain = $this->config['sourceDomain'] ?? null;
+        $targetDomain = $this->config['targetDomain'] ?? null;
+        if ($sourceDomain & $targetDomain) {
+            $body = str_replace($this->config['sourceDomain'], $this->config['targetDomain'], $body);
+        }
         return $body;
     }
 
