@@ -94,11 +94,15 @@ class VanillaDestination extends AbstractDestination {
                 $row['knowledgeCategoryID'] = $existingCategory['knowledgeCategoryID'] ?? null;
                 $alias = $row["alias"] ?? null;
                 try {
+                    // This should probably grab from the edit endpoint because that's what you'll be comparing to.
                     $existingArticle = $this->vanillaApi->getKnowledgeArticleBySmartID($row["foreignID"]);
-                    $this->vanillaApi->patch('/api/v2/articles/'.$existingArticle['articleID'], $row);
+                    $patch = $this->compareFields($existingArticle, $row);
+                    if (empty($patch)) {
+                        $this->vanillaApi->patch('/api/v2/articles/' . $existingArticle['articleID'], $patch);
+                    }
                 } catch (NotFoundException $ex) {
                     $response = $this->vanillaApi->post('/api/v2/articles', $row)->getBody();
-                    $this->vanillaApi->put('/api/v2/articles/'.$response['articleID'].'/aliases',["aliases" => [$alias]]);
+                    $this->vanillaApi->put('/api/v2/articles/'.$response['articleID'].'/aliases', ["aliases" => [$alias]]);
                 }
             }
         }
@@ -112,5 +116,17 @@ class VanillaDestination extends AbstractDestination {
 
         $this->vanillaApi->setToken($this->config['token']);
         $this->vanillaApi->setBaseUrl($this->config['baseUrl']);
+    }
+
+    /**
+     * Compare an existing row with a new one to see what's changed.
+     *
+     * @param array $existing
+     * @param array $new
+     * @return array
+     * @todo Fill this in.
+     */
+    private function compareFields(array $existing, array $new): array {
+        return $new;
     }
 }
