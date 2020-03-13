@@ -40,17 +40,15 @@ class VanillaSource extends AbstractSource {
      * Execute import content actions
      */
     public function import(): void {
-        $kbIDs = $this->processKnowledgeBases();
-        $kbCatIDs = $this->processKnowledgeCategories($kbIDs);
-        $this->processArticles($kbCatIDs);
+        $this->processKnowledgeBases();
+        $this->processKnowledgeCategories();
+        $this->processArticles();
     }
 
     /**
      * Process: GET knowledge bases, POST/PATCH vanilla knowledge bases
-     *
-     * @return array
      */
-    private function processKnowledgeBases(): array {
+    private function processKnowledgeBases() {
         $dest = $this->getDestination();
         $knowledgeBases = $this->vanillaApi->getKnowledgeBases('en');
         $kbs = $this->transform($knowledgeBases, [
@@ -66,19 +64,12 @@ class VanillaSource extends AbstractSource {
         ]);
 
         $dest->importKnowledgeBases($kbs);
-//        $array = [];
-//        array_push($array, ...$kbs);
-//        return array_column($array, 'foreignID');
-        return [];
     }
 
     /**
      * Process: GET vanilla kb categories, POST/PATCH vanilla knowledge categories
-     *
-     * @param array $kbs
-     * @return array
      */
-    private function processKnowledgeCategories(array $kbs): array {
+    private function processKnowledgeCategories() {
         $categories = $this->vanillaApi->getKnowledgeCategories('en', ['knowledgeBaseID']);
         $knowledgeCategories = $this->transform($categories, [
             'foreignID' => ["column" =>'knowledgeCategoryID', "filter" => [$this, "addPrefix"]],
@@ -92,21 +83,12 @@ class VanillaSource extends AbstractSource {
         ]);
         $dest = $this->getDestination();
         $dest->importKnowledgeCategories($knowledgeCategories);
-
-//        $array = [];
-//        array_push($array, ...$knowledgeCategories);
-//
-//        return array_column($array, 'foreignID');
-        return [];
     }
 
     /**
      * Process: GET vanilla kb articles, POST/PATCH vanilla knowledge base articles
-     *
-     * @param array $kbCatIDs
-     * @return array
      */
-    private function processArticles(array $kbCatIDs): array {
+    private function processArticles() {
         return [];
     }
 

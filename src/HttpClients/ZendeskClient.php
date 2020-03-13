@@ -51,20 +51,7 @@ class ZendeskClient extends HttpClient {
     public function getCategories(string $locale, array $query = []): iterable {
         $queryParams = empty($query) ? '' : '?'.http_build_query($query);
         $results = $this->get("/help_center/$locale/categories.json".$queryParams)->getBody();
-        $zendeskCategories = [];
-
-        if ($results) {
-            $zendeskCategories = $results['categories'];
-            $pageCount = $result['page_count'] ?? null;
-            if ($pageCount > 1) {
-                $count = 2;
-                while ($count <= $pageCount) {
-                    $results = $this->get("/help_center/$locale/categories.json?page={$count}")->getBody();
-                    $zendeskCategories += $results['categories'] ?? null;
-                    $count++;
-                }
-            }
-        }
+        $zendeskCategories = $results['categories'] ?? null;
 
         foreach ($zendeskCategories as &$zendeskCategory) {
             $zendeskCategory["locale"] = "en";

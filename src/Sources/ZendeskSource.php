@@ -43,17 +43,15 @@ class ZendeskSource extends AbstractSource {
      * Execute import content actions
      */
     public function import(): void {
-        $kbIDs = $this->processKnowledgeBases();
-        $kbCatIDs = $this->processKnowledgeCategories($kbIDs);
-        $this->processKnowledgeArticles($kbCatIDs);
+        $this->processKnowledgeBases();
+        $this->processKnowledgeCategories();
+        $this->processKnowledgeArticles();
     }
 
     /**
      * Process: GET zendesk categories, POST/PATCH vanilla knowledge bases
-     *
-     * @return array
      */
-    private function processKnowledgeBases(): array {
+    private function processKnowledgeBases() {
         $perPage = $this->config['perPage'] ?? self::LIMIT;
         $pageFrom = $this->config['pageFrom'] ?? self::PAGE_START;
         $pageTo = $this->config['pageTo'] ?? self::PAGE_END;
@@ -75,16 +73,12 @@ class ZendeskSource extends AbstractSource {
             $dest = $this->getDestination();
             $dest->importKnowledgeBases($kbs);
         }
-        return [];
     }
 
     /**
      * Process: GET zendesk sections, POST/PATCH vanilla knowledge categories
-     *
-     * @param array $kbs
-     * @return array
      */
-    private function processKnowledgeCategories(array $kbs): array {
+    private function processKnowledgeCategories() {
         $perPage = $this->config['perPage'] ?? self::LIMIT;
         $pageFrom = $this->config['pageFrom'] ?? self::PAGE_START;
         $pageTo = $this->config['pageTo'] ?? self::PAGE_END;
@@ -102,17 +96,12 @@ class ZendeskSource extends AbstractSource {
             $dest = $this->getDestination();
             $dest->importKnowledgeCategories($knowledgeCategories);
         }
-
-        return [];
     }
 
     /**
      * Process: GET zendesk articles, POST/PATCH vanilla knowledge base articles
-     *
-     * @param array $kbs
-     * @return array
      */
-    private function processKnowledgeArticles(array $kbs): array {
+    private function processKnowledgeArticles() {
         $perPage = $this->config['perPage'] ?? self::LIMIT;
         $pageFrom = $this->config['pageFrom'] ?? self::PAGE_START;
         $pageTo = $this->config['pageTo'] ?? self::PAGE_END;
