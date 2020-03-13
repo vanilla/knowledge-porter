@@ -43,8 +43,8 @@ class ZendeskSource extends AbstractSource {
      * Execute import content actions
      */
     public function import(): void {
-        $this->processKnowledgeBases();
-        $this->processKnowledgeCategories();
+        //$this->processKnowledgeBases();
+        //$this->processKnowledgeCategories();
         $this->processKnowledgeArticles();
     }
 
@@ -171,17 +171,11 @@ class ZendeskSource extends AbstractSource {
      * @todo Make sure to prefix with the prefix like: `<prefix>/<path>`. Hint: `parse_url()`.
      */
     protected function setAlias($id): string {
-        // to refactor, temporary solution to test out aliases.
-        $basePath = "/hc/en-us/articles/".$id;
+        $prefix = ($this->config["prefix"] !== '') ?  '/'.$this->config["prefix"] : '';
+
+        $basePath = "$prefix/hc/en-us/articles/$id";
+
         return $basePath;
-
-        // Our config: https://ourdomain.com or https://ourdomain.com/node
-
-        // Old URL https://theirdomain.com/hc/en-us/articles/1234-xxxx
-        // New URL: https://ourdomain.com/kb/articles/aliases/prefix/hc/en-us/articles/1234
-        // Later Route: ^https://ourdomain.com/kb/articles/aliases/prefix/hc/en-us/articles/(\d+) -> ^https://ourdomain.com/kb/articles/aliases/prefix/hc/en-us/articles/$1
-
-        // Rule: htps://theirdomain.com -> https://ourdomain.com/kb/articles/aliases/prefix
     }
 
     /**
@@ -217,18 +211,29 @@ class ZendeskSource extends AbstractSource {
      * @return string
      */
     protected function parseUrls($body): string {
-        // could use a preg_replace here.  As discussed with Alex use this over domDocument.
-        $sourceDomain = $this->config['sourceDomain'] ?? null;
-        $targetDomain = $this->config['targetDomain'] ?? null;
-        if ($sourceDomain & $targetDomain) {
-            $body = str_replace($this->config['sourceDomain'], $this->config['targetDomain'], $body);
+        $sourceDomain = $this->config['sourceBasePath'] ?? null;
+        $targetDomain = $this->config['targetBasePath'] ?? null;
+        $prefix = $this->config['prefix'] ?? null;
+        if ($sourceDomain && $targetDomain && $prefix) {
+            $body = self::replaceUrls($body, $sourceDomain, $targetDomain, $prefix);
         }
         return $body;
     }
 
     public static function replaceUrls(string $body, string $sourceDomain, string $targetBaseUrl, string $prefix) {
-        $body = str_replace($sourceDomain, $targetBaseUrl, $body);
-        return $body;
+        /** @var DOMDocument $domDoc */
+        $domDoc = new DOMDocument();
+        @$domDoc->loadHTML($body);
+        $links = $domDoc->getElementsByTagName('a');
+        foreach ($links as $link) {
+            $parseUrl = parse_url($link->getAttribute('href'));
+            $host  = ($parseUrl['host'] ?? null) ? "https://{$parseUrl['host']}" : null;
+            if ($host === $sourceDomain) {
+                $newLink = str_replace($host, $targetBaseUrl.'/kb/articles/aliases/'.$prefix, $link->getAttribute('href'));
+                $link->setAttribute('href', $newLink);
+            }
+        }
+        return $domDoc->saveHTML();
     }
 
     /**
