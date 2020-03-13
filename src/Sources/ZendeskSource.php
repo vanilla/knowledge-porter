@@ -19,6 +19,7 @@ class ZendeskSource extends AbstractSource {
     const PAGE_START =  1;
     const PAGE_END = 10;
 
+    const DEFAULT_SOURCE_LOCALE = 'en-us';
     /**
      * @var ZendeskClient
      */
@@ -43,8 +44,8 @@ class ZendeskSource extends AbstractSource {
      * Execute import content actions
      */
     public function import(): void {
-        $this->processKnowledgeBases();
-        $this->processKnowledgeCategories();
+      //  $this->processKnowledgeBases();
+       // $this->processKnowledgeCategories();
         $this->processKnowledgeArticles();
     }
 
@@ -55,9 +56,10 @@ class ZendeskSource extends AbstractSource {
         $perPage = $this->config['perPage'] ?? self::LIMIT;
         $pageFrom = $this->config['pageFrom'] ?? self::PAGE_START;
         $pageTo = $this->config['pageTo'] ?? self::PAGE_END;
+        $locale = $this->config['sourceLocale'] ?? self::DEFAULT_SOURCE_LOCALE;
 
         for ($page = $pageFrom; $page <= $pageTo; $page++) {
-            $knowledgeBases = $this->zendesk->getCategories('en-us', ['page' => $page, 'per_page' => $perPage]);
+            $knowledgeBases = $this->zendesk->getCategories($locale, ['page' => $page, 'per_page' => $perPage]);
             if (empty($knowledgeBases)) {
                 break;
             }
@@ -83,8 +85,10 @@ class ZendeskSource extends AbstractSource {
         $perPage = $this->config['perPage'] ?? self::LIMIT;
         $pageFrom = $this->config['pageFrom'] ?? self::PAGE_START;
         $pageTo = $this->config['pageTo'] ?? self::PAGE_END;
+        $locale = $this->config['sourceLocale'] ?? self::DEFAULT_SOURCE_LOCALE;
+
         for ($page = $pageFrom; $page <= $pageTo; $page++) {
-            $categories = $this->zendesk->getSections('en-us', ['page' => $page, 'per_page' => $perPage]);
+            $categories = $this->zendesk->getSections($locale, ['page' => $page, 'per_page' => $perPage]);
             if (empty($categories)) {
                 break;
             }
@@ -107,9 +111,11 @@ class ZendeskSource extends AbstractSource {
         $perPage = $this->config['perPage'] ?? self::LIMIT;
         $pageFrom = $this->config['pageFrom'] ?? self::PAGE_START;
         $pageTo = $this->config['pageTo'] ?? self::PAGE_END;
+        $locale = $this->config['sourceLocale'] ?? self::DEFAULT_SOURCE_LOCALE;
+
 
         for ($page = $pageFrom; $page <= $pageTo; $page++) {
-            $articles = $this->zendesk->getArticles('en-us', ['page' => $page, 'per_page' => $perPage]);
+            $articles = $this->zendesk->getArticles($locale, ['page' => $page, 'per_page' => $perPage]);
             if (empty($articles)) {
                 break;
             }
@@ -172,8 +178,8 @@ class ZendeskSource extends AbstractSource {
      */
     protected function setAlias($id): string {
         $prefix = ($this->config["prefix"] !== '') ?  '/'.$this->config["prefix"] : '';
-
-        $basePath = "$prefix/hc/en-us/articles/$id";
+        $locale = $this->config['sourceLocale'] ?? self::DEFAULT_SOURCE_LOCALE;
+        $basePath = "$prefix/hc/$locale/articles/$id";
 
         return $basePath;
     }
@@ -211,7 +217,7 @@ class ZendeskSource extends AbstractSource {
      * @return string
      */
     protected function parseUrls($body): string {
-        $sourceDomain = $this->config['sourceBasePath'] ?? null;
+        $sourceDomain = $this->config['sourceDomain'] ?? null;
         $targetDomain = $this->config['targetBasePath'] ?? null;
         $prefix = $this->config['prefix'] ?? null;
         if ($sourceDomain && $targetDomain && $prefix) {
@@ -233,7 +239,7 @@ HTML;
         $links = $dom->getElementsByTagName('a');
         foreach ($links as $link) {
             $parseUrl = parse_url($link->getAttribute('href'));
-            $host  = ($parseUrl['host'] ?? null) ? "https://{$parseUrl['host']}" : null;
+            $host  = $parseUrl['host'] ?? null;
             if ($host === $sourceDomain) {
                 $newLink = str_replace($host, $targetBaseUrl.'/kb/articles/aliases/'.$prefix, $link->getAttribute('href'));
                 $link->setAttribute('href', $newLink);
