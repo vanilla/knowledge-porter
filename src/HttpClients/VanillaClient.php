@@ -20,33 +20,30 @@ class VanillaClient extends HttpClient {
      */
     private $token;
 
+    /**
+     * VanillaClient constructor.
+     *
+     * @param string $baseUrl
+     * @param HttpHandlerInterface|null $handler
+     */
     public function __construct(string $baseUrl = '', HttpHandlerInterface $handler = null) {
         parent::__construct($baseUrl, $handler);
         $this->setThrowExceptions(true);
         $this->setDefaultHeader('Content-Type', 'application/json');
     }
 
+    /**
+     * Set api access token
+     *
+     * @param string $token
+     */
     public function setToken(string $token) {
         $this->token = $token;
         $this->setDefaultHeader('Authorization', "Bearer $token");
     }
-
-    public function getCategories(string $locale, array $query = []): array {
-        $result = $this->get("/api/v2/knowledge-categories?locale={$locale}");
-        $body = $result->getBody();
-        echo json_encode($body);
-        return $body;
-    }
-
-    public function getCategoriesby(string $locale, array $query = []): array {
-        $result = $this->get("/api/v2/knowledge-categories?locale={$locale}");
-        $body = $result->getBody();
-        echo json_encode($body);
-        return $body;
-    }
-
-
     /**
+     * Execute GET /api/v2/knowledge-bases request against vanilla api.
+     *
      * @param string $locale
      * @param array $query
      * @return array
@@ -58,6 +55,8 @@ class VanillaClient extends HttpClient {
     }
 
     /**
+     * Execute GET /api/v2/knowledge-categories request against vanilla api.
+     *
      * @param string $locale
      * @param array $query
      * @return array
@@ -69,6 +68,8 @@ class VanillaClient extends HttpClient {
     }
 
     /**
+     * GET /api/v2/knowledge-bases/{knowledgeCategoryID} using smartID.
+     *
      * @param string $paramSmartID
      * @param array $query
      * @return array
@@ -81,10 +82,12 @@ class VanillaClient extends HttpClient {
     }
 
     /**
-    * @param string $paramSmartID
-    * @param array $query
-    * @return array
-    */
+     * GET /api/v2/knowledge-categories/{knowledgeCategoryID} using smartID.
+     *
+     * @param string $paramSmartID
+     * @param array $query
+     * @return array
+     */
     public function getKnowledgeCategoryBySmartID(string $paramSmartID, array $query = []): array {
 
         $result = $this->get("/api/v2/knowledge-categories/".rawurlencode('$foreignID:'.$paramSmartID));
@@ -93,12 +96,13 @@ class VanillaClient extends HttpClient {
     }
 
     /**
+     *  GET /api/v2/knowledge-articles/{articleID} using vanilla api.
+     *
      * @param string $paramSmartID
      * @param array $query
      * @return array
      */
     public function getKnowledgeArticleBySmartID(string $paramSmartID, array $query = []): array {
-
         $result = $this->get("/api/v2/articles/".rawurlencode('$foreignID:'.$paramSmartID));
         $body = $result->getBody();
         return $body;
@@ -113,10 +117,11 @@ class VanillaClient extends HttpClient {
     }
 
     /**
+     * Exceptions and error handling for some specific cases.
+     *
      * @param HttpResponse $response
      * @param array $options
-     * @throws NotFoundException
-     * @throws \Garden\Http\HttpResponseException
+     * @throws NotFoundException Throw not found exception when 404 status received.
      */
     public function handleErrorResponse(HttpResponse $response, $options = []) {
         if ($response->getStatusCode() === 404 && $this->getThrowExceptions()) {
