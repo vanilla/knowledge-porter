@@ -43,8 +43,8 @@ class ZendeskSource extends AbstractSource {
      * Execute import content actions
      */
     public function import(): void {
-        //$this->processKnowledgeBases();
-        //$this->processKnowledgeCategories();
+        $this->processKnowledgeBases();
+        $this->processKnowledgeCategories();
         $this->processKnowledgeArticles();
     }
 
@@ -222,7 +222,7 @@ class ZendeskSource extends AbstractSource {
 
     public static function replaceUrls(string $body, string $sourceDomain, string $targetBaseUrl, string $prefix) {
         /** @var DOMDocument $domDoc */
-        $domDoc = new DOMDocument();
+        $domDoc = new DOMDocument('1.0', 'UTF-8');
         @$domDoc->loadHTML($body);
         $links = $domDoc->getElementsByTagName('a');
         foreach ($links as $link) {
