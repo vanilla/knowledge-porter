@@ -221,10 +221,16 @@ class ZendeskSource extends AbstractSource {
     }
 
     public static function replaceUrls(string $body, string $sourceDomain, string $targetBaseUrl, string $prefix) {
-        /** @var DOMDocument $domDoc */
-        $domDoc = new DOMDocument('1.0', 'UTF-8');
-        @$domDoc->loadHTML($body);
-        $links = $domDoc->getElementsByTagName('a');
+
+        $contentPrefix = <<<HTML
+<html><head><meta content="text/html; charset=utf-8" http-equiv="Content-Type"></head>
+<body>
+HTML;
+        $contentSuffix = "</body></html>";
+        $dom = new DOMDocument();
+        @$dom->loadHTML($contentPrefix . $body . $contentSuffix, LIBXML_HTML_NOIMPLIED| LIBXML_HTML_NODEFDTD);
+
+        $links = $dom->getElementsByTagName('a');
         foreach ($links as $link) {
             $parseUrl = parse_url($link->getAttribute('href'));
             $host  = ($parseUrl['host'] ?? null) ? "https://{$parseUrl['host']}" : null;
@@ -233,7 +239,7 @@ class ZendeskSource extends AbstractSource {
                 $link->setAttribute('href', $newLink);
             }
         }
-        return $domDoc->saveHTML();
+        return $dom->saveHTML();
     }
 
     /**
