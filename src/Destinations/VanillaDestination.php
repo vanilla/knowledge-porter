@@ -15,6 +15,32 @@ use Vanilla\KnowledgePorter\HttpClients\VanillaClient;
  * @package Vanilla\KnowledgePorter\Destinations
  */
 class VanillaDestination extends AbstractDestination {
+    const UPDATE_MODE_ALWAYS = 'always';
+    const UPDATE_MODE_ON_CHANGE = 'onChange';
+    const UPDATE_MODE_ON_DATE = 'onDate';
+
+    const DATE_UPDATED = 'dateUpdated';
+
+    const ARTICLE_EDIT_FIELDS = [
+        ['knowledgeCategoryID', 'resolveKnowledgeCategoryID'],
+        'name',
+        'body'
+    ];
+
+    const KB_EDIT_FIELDS = [
+        'name',
+        'description',
+        'urlCode',
+        'sourceLocale',
+        'viewType',
+        'sortArticles'
+    ];
+
+    const KB_CATEGORY_EDIT_FIELDS = [
+        'name',
+        ['knowledgeBaseID', 'resolveKnowledgeBaseID'],
+        ['parentID', 'resolveKnowledgeCategoryID'],
+    ];
 
     /**
      * @var VanillaClient
@@ -39,7 +65,10 @@ class VanillaDestination extends AbstractDestination {
             }
             try {
                 $existing = $this->vanillaApi->getKnowledgeBaseBySmartID($row["foreignID"]);
-                $this->vanillaApi->patch('/api/v2/knowledge-bases/'.$existing['knowledgeBaseID'], $row);
+                $patch = $this->updateFields($existing, $row, self::KB_EDIT_FIELDS);
+                if (!empty($patch)) {
+                    $this->vanillaApi->patch('/api/v2/knowledge-bases/' . $existing['knowledgeBaseID'], $patch);
+                }
             } catch (NotFoundException $ex) {
                 $kb = $this->vanillaApi->post('/api/v2/knowledge-bases', $row)->getBody();
             }
@@ -66,7 +95,13 @@ class VanillaDestination extends AbstractDestination {
                 };
                 try {
                     $existing = $this->vanillaApi->getKnowledgeCategoryBySmartID($row["foreignID"]);
-                    $this->vanillaApi->patch('/api/v2/knowledge-categories/' . $existing['knowledgeCategoryID'], $row);
+                    $patch = $this->updateFields($existing, $row, self::KB_CATEGORY_EDIT_FIELDS);
+                    if (!empty($patch)) {
+                        $this->vanillaApi->patch(
+                            '/api/v2/knowledge-categories/' . $existing['knowledgeCategoryID'],
+                            $patch
+                        );
+                    }
                 } catch (NotFoundException $ex) {
                     $this->vanillaApi->post('/api/v2/knowledge-categories', $row);
                 }
@@ -97,7 +132,7 @@ class VanillaDestination extends AbstractDestination {
                 try {
                     // This should probably grab from the edit endpoint because that's what you'll be comparing to.
                     $existingArticle = $this->vanillaApi->getKnowledgeArticleBySmartID($row["foreignID"]);
-                    $patch = $this->compareFields($existingArticle, $row);
+                    $patch = $this->compareFields($existingArticle, $row, self::ARTICLE_EDIT_FIELDS);
                     if (!empty($patch)) {
                         $this->vanillaApi->patch('/api/v2/articles/' . $existingArticle['articleID'], $patch);
                     }
@@ -107,6 +142,28 @@ class VanillaDestination extends AbstractDestination {
                 }
             }
         }
+    }
+
+    /**
+     * Resolve knowledge base ID from smartID.
+     *
+     * @param string $smartID
+     * @return int
+     */
+    public function resolveKnowledgeBaseID(string $smartID): int {
+        $kb = $this->vanillaApi->get("/api/v2/knowledge-bases/".rawurlencode($smartID));
+        return $kb["knowledgeBaseID"];
+    }
+
+    /**
+     * Resolve knowledge category ID from smartID.
+     *
+     * @param string $smartID
+     * @return int
+     */
+    public function resolveKnowledgeCategoryID(string $smartID): int {
+        $kb = $this->vanillaApi->get("/api/v2/knowledge-categories/".rawurlencode($smartID));
+        return $kb["knowledgeCategoryID"];
     }
 
     /**
@@ -124,10 +181,49 @@ class VanillaDestination extends AbstractDestination {
      *
      * @param array $existing
      * @param array $new
+     * @param array $allowed
      * @return array
-     * @todo Fill this in.
      */
-    private function compareFields(array $existing, array $new): array {
-        return $new;
+    private function compareFields(array $existing, array $new, array $allowed): array {
+        $res = [];
+        foreach ($allowed as $field) {
+            if (is_array($field)) {
+                $fieldKey = $field[0];
+                $new[$fieldKey] = $this->{$field[1]}($new[$fieldKey]);
+            } else {
+                $fieldKey = $field;
+            }
+            if (isset($new[$fieldKey]) && ($new[$fieldKey] !== $existing[$fieldKey])) {
+                $res[$fieldKey] = $new[$fieldKey];
+            }
+
+        }
+        return $res;
+    }
+
+    /**
+     * Check if record fields need to be updated or not.
+     *
+     * @param array $existing
+     * @param array $new
+     * @return array
+     */
+    private function updateFields(array $existing, array $new, array $extra): array {
+        $res = [];
+        $updateMode = $this->config['update'] ?? self::UPDATE_MODE_ON_CHANGE;
+        switch ($updateMode) {
+            case self::UPDATE_MODE_ALWAYS:
+                $res = $new;
+                break;
+            case self::UPDATE_MODE_ON_CHANGE:
+                $res = $this->compareFields($existing, $new, $extra);
+                break;
+            case self::UPDATE_MODE_ON_DATE:
+                if ($existing[self::DATE_UPDATED] < $new[self::DATE_UPDATED]) {
+                    $res = $new;
+                }
+                break;
+        }
+        return $res;
     }
 }

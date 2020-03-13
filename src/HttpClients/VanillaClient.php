@@ -75,7 +75,6 @@ class VanillaClient extends HttpClient {
      * @return array
      */
     public function getKnowledgeBaseBySmartID(string $paramSmartID, array $query = []): array {
-
         $result = $this->get("/api/v2/knowledge-bases/".rawurlencode('$foreignID:'.$paramSmartID));
         $body = $result->getBody();
         return $body;
@@ -89,7 +88,6 @@ class VanillaClient extends HttpClient {
      * @return array
      */
     public function getKnowledgeCategoryBySmartID(string $paramSmartID, array $query = []): array {
-
         $result = $this->get("/api/v2/knowledge-categories/".rawurlencode('$foreignID:'.$paramSmartID));
         $body = $result->getBody();
         return $body;
@@ -103,11 +101,10 @@ class VanillaClient extends HttpClient {
      * @return array
      */
     public function getKnowledgeArticleBySmartID(string $paramSmartID, array $query = []): array {
-        $result = $this->get("/api/v2/articles/".rawurlencode('$foreignID:'.$paramSmartID));
+        $result = $this->get("/api/v2/articles/".rawurlencode('$foreignID:'.$paramSmartID).'/edit');
         $body = $result->getBody();
         return $body;
     }
-
 
     /**
      * @return string

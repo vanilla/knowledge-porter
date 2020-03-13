@@ -69,6 +69,7 @@ class ZendeskSource extends AbstractSource {
                 'sourceLocale' => 'locale',
                 'viewType' => 'viewType',
                 'sortArticles' => 'sortArticles',
+                'dateUpdated' => 'updated_at',
             ]);
             $dest = $this->getDestination();
             $dest->importKnowledgeBases($kbs);
@@ -92,6 +93,7 @@ class ZendeskSource extends AbstractSource {
                 'knowledgeBaseID' => ["column" => 'category_id', "filter" => [$this, "knowledgeBaseSmartId"]],
                 'parentID' => ["column" => 'parent_section_id', "filter" => [$this, "calculateParentID"]],
                 'name' => 'name',
+                'dateUpdated' => 'updated_at',
             ]);
             $dest = $this->getDestination();
             $dest->importKnowledgeCategories($knowledgeCategories);
@@ -170,7 +172,7 @@ class ZendeskSource extends AbstractSource {
      */
     protected function setAlias($id): string {
         // to refactor, temporary solution to test out aliases.
-        $basePath = "/$prefix/hc/en-us/articles/".$id;
+        $basePath = "/hc/en-us/articles/".$id;
         return $basePath;
 
         // Our config: https://ourdomain.com or https://ourdomain.com/node
