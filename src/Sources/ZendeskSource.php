@@ -63,7 +63,6 @@ class ZendeskSource extends AbstractSource {
             if (empty($knowledgeBases)) {
                 break;
             }
-
             $kbs = $this->transform($knowledgeBases, [
                 'foreignID' => ['column' => 'id', 'filter' => [$this, 'addPrefix']],
                 'name' => 'name',
@@ -76,7 +75,6 @@ class ZendeskSource extends AbstractSource {
             $dest = $this->getDestination();
             $dest->importKnowledgeBases($kbs);
         }
-
         return [];
     }
 
@@ -115,9 +113,9 @@ class ZendeskSource extends AbstractSource {
      * @return array
      */
     private function processKnowledgeArticles(array $kbs): array {
-        $perPage = $this->config['perPage'] ?? 50;
-        $pageFrom = $this->config['pageFrom'] ?? 1;
-        $pageTo = $this->config['pageTo'] ?? 10;
+        $perPage = $this->config['perPage'] ?? self::LIMIT;
+        $pageFrom = $this->config['pageFrom'] ?? self::PAGE_START;
+        $pageTo = $this->config['pageTo'] ?? self::PAGE_END;
 
         for ($page = $pageFrom; $page <= $pageTo; $page++) {
             $articles = $this->zendesk->getArticles('en-us', ['page' => $page, 'per_page' => $perPage]);
