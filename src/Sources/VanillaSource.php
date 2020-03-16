@@ -99,7 +99,7 @@ class VanillaSource extends AbstractSource {
      * @return string
      */
     protected function addPrefix($str): string {
-        $newStr = $this->config["prefix"].$str;
+        $newStr = $this->config["foreignIDPrefix"].$str;
         return $newStr;
     }
 
@@ -110,7 +110,7 @@ class VanillaSource extends AbstractSource {
      * @return string
      */
     protected function knowledgeCategorySmartId($str): string {
-        $newStr = '$foreignID:'.$this->config["prefix"].$str;
+        $newStr = '$foreignID:'.$this->config["foreignIDPrefix"].$str;
         return $newStr;
     }
 
@@ -122,7 +122,7 @@ class VanillaSource extends AbstractSource {
      */
     protected function calculateParentID($str): string {
         if ($str != "-1") {
-            $newStr = '$foreignID:' . $this->config["prefix"] . $str;
+            $newStr = '$foreignID:' . $this->config["foreignIDPrefix"] . $str;
         } else {
             $newStr = $str;
         }
@@ -182,7 +182,7 @@ class VanillaSource extends AbstractSource {
      * @return string
      */
     protected function knowledgeBaseSmartId($str): string {
-        $newStr = '$foreignID:'.$this->config["prefix"].$str;
+        $newStr = '$foreignID:'.$this->config["foreignIDPrefix"].$str;
         return $newStr;
     }
 

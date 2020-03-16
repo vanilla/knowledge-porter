@@ -33,7 +33,9 @@ class ZendeskSource extends AbstractSource {
 
     /**
      * ZendeskSource constructor.
+     *
      * @param ZendeskClient $zendesk
+     * @param ContainerInterface $container
      */
     public function __construct(ZendeskClient $zendesk, ContainerInterface $container) {
         $this->zendesk = $zendesk;
@@ -66,13 +68,13 @@ class ZendeskSource extends AbstractSource {
      * Process: GET zendesk categories, POST/PATCH vanilla knowledge bases
      */
     private function processKnowledgeBases() {
-        $perPage = $this->config['perPage'] ?? self::LIMIT;
+        $pageLimit = $this->config['pageLimit'] ?? self::LIMIT;
         $pageFrom = $this->config['pageFrom'] ?? self::PAGE_START;
         $pageTo = $this->config['pageTo'] ?? self::PAGE_END;
         $locale = $this->config['sourceLocale'] ?? self::DEFAULT_SOURCE_LOCALE;
 
         for ($page = $pageFrom; $page <= $pageTo; $page++) {
-            $knowledgeBases = $this->zendesk->getCategories($locale, ['page' => $page, 'per_page' => $perPage]);
+            $knowledgeBases = $this->zendesk->getCategories($locale, ['page' => $page, 'per_page' => $pageLimit]);
             if (empty($knowledgeBases)) {
                 break;
             }
@@ -95,13 +97,13 @@ class ZendeskSource extends AbstractSource {
      * Process: GET zendesk sections, POST/PATCH vanilla knowledge categories
      */
     private function processKnowledgeCategories() {
-        $perPage = $this->config['perPage'] ?? self::LIMIT;
+        $pageLimit = $this->config['pageLimit'] ?? self::LIMIT;
         $pageFrom = $this->config['pageFrom'] ?? self::PAGE_START;
         $pageTo = $this->config['pageTo'] ?? self::PAGE_END;
         $locale = $this->config['sourceLocale'] ?? self::DEFAULT_SOURCE_LOCALE;
 
         for ($page = $pageFrom; $page <= $pageTo; $page++) {
-            $categories = $this->zendesk->getSections($locale, ['page' => $page, 'per_page' => $perPage]);
+            $categories = $this->zendesk->getSections($locale, ['page' => $page, 'per_page' => $pageLimit]);
             if (empty($categories)) {
                 break;
             }
@@ -121,14 +123,14 @@ class ZendeskSource extends AbstractSource {
      * Process: GET zendesk articles, POST/PATCH vanilla knowledge base articles
      */
     private function processKnowledgeArticles() {
-        $perPage = $this->config['perPage'] ?? self::LIMIT;
+        $pageLimit = $this->config['pageLimit'] ?? self::LIMIT;
         $pageFrom = $this->config['pageFrom'] ?? self::PAGE_START;
         $pageTo = $this->config['pageTo'] ?? self::PAGE_END;
         $locale = $this->config['sourceLocale'] ?? self::DEFAULT_SOURCE_LOCALE;
 
 
         for ($page = $pageFrom; $page <= $pageTo; $page++) {
-            $articles = $this->zendesk->getArticles($locale, ['page' => $page, 'per_page' => $perPage]);
+            $articles = $this->zendesk->getArticles($locale, ['page' => $page, 'per_page' => $pageLimit]);
             if (empty($articles)) {
                 break;
             }
@@ -154,7 +156,7 @@ class ZendeskSource extends AbstractSource {
      * @return string
      */
     protected function knowledgeBaseSmartId($str): string {
-        $newStr = '$foreignID:'.$this->config["prefix"].$str;
+        $newStr = '$foreignID:'.$this->config["foreignIDPrefix"].$str;
         return $newStr;
     }
 
@@ -165,7 +167,7 @@ class ZendeskSource extends AbstractSource {
      * @return string
      */
     protected function addPrefix($str): string {
-        $newStr = $this->config["prefix"].$str;
+        $newStr = $this->config["foreignIDPrefix"].$str;
         return $newStr;
     }
 
@@ -178,7 +180,7 @@ class ZendeskSource extends AbstractSource {
     protected function extractUrlSlug($str): string {
         $pathInfo = pathinfo($str);
         $slug = $pathInfo['basename'] ?? null;
-        $urlCode = strtolower($this->config["prefix"].$slug);
+        $urlCode = strtolower($this->config["foreignIDPrefix"].$slug);
         return $urlCode;
     }
 
@@ -190,7 +192,7 @@ class ZendeskSource extends AbstractSource {
      * @todo Make sure to prefix with the prefix like: `<prefix>/<path>`. Hint: `parse_url()`.
      */
     protected function setAlias($id): string {
-        $prefix = ($this->config["prefix"] !== '') ?  '/'.$this->config["prefix"] : '';
+        $prefix = ($this->config["foreignIDPrefix"] !== '') ?  '/'.$this->config["foreignIDPrefix"] : '';
         $locale = $this->config['sourceLocale'] ?? self::DEFAULT_SOURCE_LOCALE;
         $basePath = "$prefix/hc/$locale/articles/$id";
 
@@ -205,7 +207,7 @@ class ZendeskSource extends AbstractSource {
      */
     protected function calculateParentID($str): string {
         if (!is_null($str)) {
-            $newStr = '$foreignID:' . $this->config["prefix"] . $str;
+            $newStr = '$foreignID:' . $this->config["foreignIDPrefix"] . $str;
         } else {
             $newStr = 'null';
         }
@@ -230,9 +232,9 @@ class ZendeskSource extends AbstractSource {
      * @return string
      */
     protected function parseUrls($body): string {
-        $sourceDomain = $this->config['sourceDomain'] ?? null;
-        $targetDomain = $this->config['targetBasePath'] ?? null;
-        $prefix = $this->config['prefix'] ?? null;
+        $sourceDomain = $this->config['domain'] ?? null;
+        $targetDomain = $this->config['targetDomain'] ?? null;
+        $prefix = $this->config['foreignIDPrefix'] ?? null;
         if ($sourceDomain && $targetDomain && $prefix) {
             $body = self::replaceUrls($body, $sourceDomain, $targetDomain, $prefix);
         }
@@ -240,10 +242,13 @@ class ZendeskSource extends AbstractSource {
     }
 
     /**
+     * Replace urls with new domain.
+     * 
      * @param string $body
      * @param string $sourceDomain
      * @param string $targetBaseUrl
      * @param string $prefix
+     *
      * @return string
      */
     public static function replaceUrls(string $body, string $sourceDomain, string $targetBaseUrl, string $prefix) {
@@ -275,6 +280,10 @@ HTML;
      */
     public function setConfig(array $config): void {
         $this->config = $config;
+
+        $domain = $this->config['domain'] ?? null;
+        $domain = "https://$domain";
+
         if ($config['api']['cache'] ?? true) {
             $this->zendesk->addMiddleware($this->container->get(HttpCacheMiddleware::class));
         }
@@ -282,6 +291,6 @@ HTML;
             $this->zendesk->addMiddleware($this->container->get(HttpLogMiddleware::class));
         }
         $this->zendesk->setToken($this->config['token']);
-        $this->zendesk->setBaseUrl($this->config['baseUrl']);
+        $this->zendesk->setBaseUrl($domain);
     }
 }

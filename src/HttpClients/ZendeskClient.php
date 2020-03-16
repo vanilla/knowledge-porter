@@ -50,7 +50,7 @@ class ZendeskClient extends HttpClient {
      */
     public function getCategories(string $locale, array $query = []): iterable {
         $queryParams = empty($query) ? '' : '?'.http_build_query($query);
-        $results = $this->get("/help_center/$locale/categories.json".$queryParams)->getBody();
+        $results = $this->get("/api/v2/help_center/$locale/categories.json".$queryParams)->getBody();
         $zendeskCategories = $results['categories'] ?? null;
 
         foreach ($zendeskCategories as &$zendeskCategory) {
@@ -73,7 +73,7 @@ class ZendeskClient extends HttpClient {
      */
     public function getSections(string $locale, array $query = []): array {
         $queryParams = empty($query) ? '' : '?'.http_build_query($query);
-        $results = $this->get("/help_center/$locale/sections.json".$queryParams)->getBody();
+        $results = $this->get("/api/v2/help_center/$locale/sections.json".$queryParams)->getBody();
 
         return $results['sections'] ?? [];
     }
@@ -87,7 +87,7 @@ class ZendeskClient extends HttpClient {
      */
     public function getArticles(string $locale, array $query = []): iterable {
         $queryParams = empty($query) ? '' : '?'.http_build_query($query);
-        $results = $this->get("/help_center/$locale/articles.json".$queryParams)->getBody();
+        $results = $this->get("/api/v2/help_center/$locale/articles.json".$queryParams)->getBody();
 
         foreach ($results['articles'] as &$article) {
             $article['format'] = 'wysiwyg';

@@ -12,6 +12,7 @@ use Psr\Container\ContainerInterface;
 use Vanilla\KnowledgePorter\Destinations\AbstractDestination;
 use Vanilla\KnowledgePorter\Main;
 use Vanilla\KnowledgePorter\Sources\AbstractSource;
+use Garden\Schema\Schema;
 
 /**
  * Class ImportCommand
@@ -87,7 +88,9 @@ class ImportCommand extends AbstractCommand {
         /* @var \Vanilla\KnowledgePorter\Sources\AbstractSource $source */
         $source = $this->container->get($sourceClass);
         $source->setDestination($dest);
-        $source->setConfig($this->config['source']);
+        $sourceConfig = $this->config['source'];
+        $sourceConfig['targetDomain'] = $this->config['destination']['domain'] ?? null;
+        $source->setConfig($sourceConfig);
         return $source;
     }
 }
