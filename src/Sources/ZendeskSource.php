@@ -234,7 +234,7 @@ class ZendeskSource extends AbstractSource {
             "zh-tw" => "zh_TW",
             "zh-za" => "zu_Za"
         ];
-        $sourceLocale = 'fr-ca';
+
         $zenDeskLocales = array_keys($localeMapping);
 
         if (in_array($sourceLocale, $zenDeskLocales)) {
