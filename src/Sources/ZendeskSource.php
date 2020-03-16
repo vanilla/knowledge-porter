@@ -217,12 +217,13 @@ class ZendeskSource extends AbstractSource {
     /**
      * Get source locale
      *
-     * @param mixed $sourceLocale
+     * @param string $sourceLocale
      * @return string
      */
-    protected function getSourceLocale($sourceLocale): string {
+    protected function getSourceLocale(string $sourceLocale): string {
         $localeMapping = [
             "en-us" => "en",
+            "en-gb" => "en_GB",
             "es-mx" => "es_MX",
             "fr-fr" => "fr",
             "fr-ca" => "fr_CA",
@@ -238,10 +239,10 @@ class ZendeskSource extends AbstractSource {
         $zenDeskLocales = array_keys($localeMapping);
 
         if (in_array($sourceLocale, $zenDeskLocales)) {
-            $locale = $localeMapping[$sourceLocale] ?? self::DEFAULT_LOCALE;;
+            $locale = $localeMapping[$sourceLocale];
         } else {
             $sourceLocale = explode("-", $sourceLocale);
-            $locale = $sourceLocale[0] ?? self::DEFAULT_LOCALE;
+            $locale = $sourceLocale[0];
         }
 
         return $locale;
