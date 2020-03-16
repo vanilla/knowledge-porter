@@ -7,6 +7,9 @@
 
 namespace Vanilla\KnowledgePorter\Destinations;
 
+use Psr\Container\ContainerInterface;
+use Vanilla\KnowledgePorter\HttpClients\HttpCacheMiddleware;
+use Vanilla\KnowledgePorter\HttpClients\HttpLogMiddleware;
 use Vanilla\KnowledgePorter\HttpClients\NotFoundException;
 use Vanilla\KnowledgePorter\HttpClients\VanillaClient;
 
@@ -47,12 +50,16 @@ class VanillaDestination extends AbstractDestination {
      */
     private $vanillaApi;
 
+    /** @var ContainerInterface $container */
+    protected $container;
+
     /**
      * VanillaDestination constructor.
      * @param VanillaClient $vanillaApi
      */
-    public function __construct(VanillaClient $vanillaApi) {
+    public function __construct(VanillaClient $vanillaApi, ContainerInterface $container) {
         $this->vanillaApi = $vanillaApi;
+        $this->container = $container;
     }
 
     /**
@@ -171,7 +178,12 @@ class VanillaDestination extends AbstractDestination {
      */
     public function setConfig(array $config): void {
         $this->config = $config;
-
+        if ($config['api']['cache'] ?? true) {
+            $this->vanillaApi->addMiddleware($this->container->get(HttpCacheMiddleware::class));
+        }
+        if ($config['api']['log'] ?? true) {
+            $this->vanillaApi->addMiddleware($this->container->get(HttpLogMiddleware::class));
+        }
         $this->vanillaApi->setToken($this->config['token']);
         $this->vanillaApi->setBaseUrl($this->config['baseUrl']);
     }

@@ -8,7 +8,10 @@
 namespace Vanilla\KnowledgePorter\Sources;
 
 use DOMDocument;
+use Psr\Container\ContainerInterface;
+use Vanilla\KnowledgePorter\HttpClients\HttpLogMiddleware;
 use Vanilla\KnowledgePorter\HttpClients\ZendeskClient;
+use Vanilla\KnowledgePorter\HttpClients\HttpCacheMiddleware;
 
 /**
  * Class ZendeskSource
@@ -25,12 +28,16 @@ class ZendeskSource extends AbstractSource {
      */
     private $zendesk;
 
+    /** @var ContainerInterface $container */
+    protected $container;
+
     /**
      * ZendeskSource constructor.
      * @param ZendeskClient $zendesk
      */
-    public function __construct(ZendeskClient $zendesk) {
+    public function __construct(ZendeskClient $zendesk, ContainerInterface $container) {
         $this->zendesk = $zendesk;
+        $this->container = $container;
     }
 
     /**
@@ -268,6 +275,12 @@ HTML;
      */
     public function setConfig(array $config): void {
         $this->config = $config;
+        if ($config['api']['cache'] ?? true) {
+            $this->zendesk->addMiddleware($this->container->get(HttpCacheMiddleware::class));
+        }
+        if ($config['api']['log'] ?? true) {
+            $this->zendesk->addMiddleware($this->container->get(HttpLogMiddleware::class));
+        }
         $this->zendesk->setToken($this->config['token']);
         $this->zendesk->setBaseUrl($this->config['baseUrl']);
     }

@@ -134,15 +134,11 @@ final class Main {
 
             ->rule(ZendeskClient::class)
 //            ->addCall('addMiddleware', [new Reference(\Vanilla\Analyzer\HttpRetryMiddleware::class)])
-            ->addCall('addMiddleware', [new Reference(HttpLogMiddleware::class)])
-            //->addCall('addMiddleware', [new Reference(HttpCacheMiddleware::class)])
             ->setShared(false)
 
 
             ->rule(VanillaClient::class)
 //            ->addCall('addMiddleware', [new Reference(\Vanilla\Analyzer\HttpRetryMiddleware::class)])
-            ->addCall('addMiddleware', [new Reference(HttpLogMiddleware::class)])
-            // ->addCall('addMiddleware', [new Reference(HttpCacheMiddleware::class)])
             ->setShared(false)
         ;
 
