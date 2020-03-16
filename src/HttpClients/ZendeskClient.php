@@ -8,6 +8,7 @@
 namespace Vanilla\KnowledgePorter\HttpClients;
 
 use Garden\Http\HttpClient;
+use Garden\Http\HttpHandlerInterface;
 
 /**
  * The Zendesk API.
@@ -18,20 +19,81 @@ class ZendeskClient extends HttpClient {
      */
     private $token;
 
-    public function __construct(string $baseUrl, string $token = '') {
-        parent::__construct($baseUrl);
-        $this->setToken($token);
+    /**
+     * ZendeskClient constructor.
+     *
+     * @param string $baseUrl
+     * @param HttpHandlerInterface|null $handler
+     */
+    public function __construct(string $baseUrl = '', HttpHandlerInterface $handler = null) {
+        parent::__construct($baseUrl, $handler);
         $this->setThrowExceptions(true);
+        $this->setDefaultHeader('Content-Type', 'application/json');
     }
 
+    /**
+     * Set api access token
+     *
+     * @param string $token
+     */
     public function setToken(string $token) {
         $this->token = $token;
-        $this->setDefaultHeader('Authorization', "Bearer $token");
+        $this->setDefaultHeader('Authorization', "Basic ".base64_encode($token));
     }
 
-    public function getCategories(string $locale, array $query): array {
-        $result = $this->get("/api/v2/help_center/$locale/categories.json");
-        return $result->getBody();
+    /**
+     * Execute GET /help_center/$locale/categories.json request against zendesk api.
+     *
+     * @param string $locale
+     * @param array $query
+     * @return array
+     */
+    public function getCategories(string $locale, array $query = []): iterable {
+        $queryParams = empty($query) ? '' : '?'.http_build_query($query);
+        $results = $this->get("/help_center/$locale/categories.json".$queryParams)->getBody();
+        $zendeskCategories = $results['categories'] ?? null;
+
+        foreach ($zendeskCategories as &$zendeskCategory) {
+            $zendeskCategory["locale"] = "en";
+            $zendeskCategory["viewType"] = "help";
+            $zendeskCategory["sortArticles"] = "dateInsertedDesc";
+            if ($zendeskCategory['description'] === '') {
+                $zendeskCategory["description"] = $zendeskCategory['name'].' placeholder description';
+            }
+        }
+        return $zendeskCategories;
+    }
+
+    /**
+     * Execute GET /help_center/$locale/sections.json request against zendesk api.
+     *
+     * @param string $locale
+     * @param array $query
+     * @return array
+     */
+    public function getSections(string $locale, array $query = []): array {
+        $queryParams = empty($query) ? '' : '?'.http_build_query($query);
+        $results = $this->get("/help_center/$locale/sections.json".$queryParams)->getBody();
+
+        return $results['sections'] ?? [];
+    }
+
+    /**
+     * Execute GET /help_center/$locale/articles.json request against zendesk api.
+     *
+     * @param string $locale
+     * @param array $query
+     * @return array
+     */
+    public function getArticles(string $locale, array $query = []): iterable {
+        $queryParams = empty($query) ? '' : '?'.http_build_query($query);
+        $results = $this->get("/help_center/$locale/articles.json".$queryParams)->getBody();
+
+        foreach ($results['articles'] as &$article) {
+            $article['format'] = 'wysiwyg';
+            $article['locale'] = 'en';
+        }
+        return $results['articles'] ?? [];
     }
 
     /**

@@ -1,0 +1,11 @@
+{
+    "source": {
+        "type": "zendesk",
+        "baseUrl": "https://",
+        "token": ""
+    },
+    "destination": {
+        "type": "api",
+        "path": "./export"
+    }
+}

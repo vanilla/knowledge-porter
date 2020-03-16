@@ -13,6 +13,10 @@ use Garden\Http\HttpRequest;
 use Garden\Http\HttpResponse;
 use Psr\Log\LogLevel;
 
+/**
+ * Class HttpLogMiddleware
+ * @package Vanilla\KnowledgePorter\HttpClients
+ */
 class HttpLogMiddleware {
 
     /**
@@ -20,10 +24,22 @@ class HttpLogMiddleware {
      */
     private $logger;
 
+    /**
+     * HttpLogMiddleware constructor.
+     * @param TaskLogger $logger
+     */
     public function __construct(TaskLogger $logger) {
         $this->logger = $logger;
     }
 
+    /**
+     * Invoke logger to request
+     *
+     * @param HttpRequest $request
+     * @param callable $next
+     * @return HttpResponse
+     * @throws \Exception Throws an Exception if http request fail.
+     */
     public function __invoke(HttpRequest $request, callable $next): HttpResponse {
         if ($request->getHeader('X-Log') === 'off') {
             return $next($request);

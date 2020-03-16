@@ -7,20 +7,35 @@
 
 namespace Vanilla\KnowledgePorter\Destinations;
 
+use Psr\Log\LoggerAwareInterface;
+use Psr\Log\LoggerAwareTrait;
 use Vanilla\KnowledgePorter\ConfigurableTrait;
 
-abstract class AbstractDestination {
-    use ConfigurableTrait;
+/**
+ * Class AbstractDestination
+ * @package Vanilla\KnowledgePorter\Destinations
+ */
+abstract class AbstractDestination implements LoggerAwareInterface {
+    use ConfigurableTrait, LoggerAwareTrait;
 
-    public function importKnowledgeBases(iterable $rows): void {
+    /**
+     * Import knowledge bases from source to destination.
+     *
+     * @param iterable $rows
+     */
+    abstract public function importKnowledgeBases(iterable $rows): void;
 
-    }
+    /**
+     * Import knowledge categories from source to destination.
+     *
+     * @param iterable $rows
+     */
+    abstract public function importKnowledgeCategories(iterable $rows): void;
 
-    public function importCategories(iterable $row): void {
-
-    }
-
-    public function importArticles(iterable $row): void {
-
-    }
+    /**
+     * Import knowledge articles from source to destination.
+     *
+     * @param iterable $rows
+     */
+    abstract public function importKnowledgeArticles(iterable $rows): void;
 }

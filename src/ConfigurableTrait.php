@@ -7,12 +7,15 @@
 
 namespace Vanilla\KnowledgePorter;
 
-
+/**
+ * Trait ConfigurableTrait
+ * @package Vanilla\KnowledgePorter
+ */
 trait ConfigurableTrait {
     /**
      * @var array
      */
-    private $config;
+    protected $config;
 
     /**
      * @return array
