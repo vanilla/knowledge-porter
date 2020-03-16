@@ -44,9 +44,15 @@ class ZendeskSource extends AbstractSource {
      * Execute import content actions
      */
     public function import(): void {
-        $this->processKnowledgeBases();
-        $this->processKnowledgeCategories();
-        $this->processKnowledgeArticles();
+        if (!($this->config['skipCategories'] ?? false)) {
+            $this->processKnowledgeBases();
+        }
+        if (!($this->config['skipSections'] ?? false)) {
+            $this->processKnowledgeCategories();
+        }
+        if (!($this->config['skipArticles'] ?? false)) {
+            $this->processKnowledgeArticles();
+        }
     }
 
     /**
