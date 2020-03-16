@@ -54,7 +54,6 @@ class ZendeskClient extends HttpClient {
         $zendeskCategories = $results['categories'] ?? null;
 
         foreach ($zendeskCategories as &$zendeskCategory) {
-            $zendeskCategory["locale"] = "en";
             $zendeskCategory["viewType"] = "help";
             $zendeskCategory["sortArticles"] = "dateInsertedDesc";
             if ($zendeskCategory['description'] === '') {
@@ -91,7 +90,6 @@ class ZendeskClient extends HttpClient {
 
         foreach ($results['articles'] as &$article) {
             $article['format'] = 'wysiwyg';
-            $article['locale'] = 'en';
         }
         return $results['articles'] ?? [];
     }
@@ -102,4 +100,5 @@ class ZendeskClient extends HttpClient {
     public function getToken(): string {
         return $this->token;
     }
+
 }

@@ -23,6 +23,8 @@ class ZendeskSource extends AbstractSource {
     const PAGE_END = 10;
 
     const DEFAULT_SOURCE_LOCALE = 'en-us';
+    const DEFAULT_LOCALE = 'en';
+
     /**
      * @var ZendeskClient
      */
@@ -81,7 +83,7 @@ class ZendeskSource extends AbstractSource {
                 'name' => 'name',
                 'description' => 'description',
                 'urlCode' => ['column' => 'html_url', 'filter' => [$this, 'extractUrlSlug']],
-                'sourceLocale' => 'locale',
+                'sourceLocale' => ['column' => 'source_locale', 'filter' => [$this, 'getSourceLocale']],
                 'viewType' => 'viewType',
                 'sortArticles' => 'sortArticles',
                 'dateUpdated' => 'updated_at',
@@ -136,7 +138,7 @@ class ZendeskSource extends AbstractSource {
                 'foreignID' => ["column" => 'id', "filter" => [$this, "addPrefix"]],
                 'knowledgeCategoryID' => ["column" => 'section_id', "filter" => [$this, "addPrefix"]],
                 'format' => 'format',
-                'locale' => 'locale',
+                'locale' => ['column' => 'source_locale', 'filter' => [$this, 'getSourceLocale']],
                 'name' => 'name',
                 'body' => ['column' => 'body', 'filter' => [$this, 'parseUrls']],
                 'alias' => ['column' => 'id', 'filter' => [$this, 'setAlias']],
@@ -215,11 +217,33 @@ class ZendeskSource extends AbstractSource {
     /**
      * Get source locale
      *
-     * @param mixed $str
+     * @param mixed $sourceLocale
      * @return string
      */
-    protected function getSourceLocale($str): string {
-        $locale = $str;
+    protected function getSourceLocale($sourceLocale): string {
+        $localeMapping = [
+            "en-us" => "en",
+            "es-mx" => "es_MX",
+            "fr-fr" => "fr",
+            "fr-ca" => "fr_CA",
+            "mk-mk" => "mk_MK",
+            "ms-my" => "ms_MY",
+            "pt-pt" => "pt",
+            "pt-br" => "pt_BR",
+            "zh-zh" => "zh",
+            "zh-tw" => "zh_TW",
+            "zh-za" => "zu_Za"
+        ];
+        $sourceLocale = 'fr-ca';
+        $zenDeskLocales = array_keys($localeMapping);
+
+        if (in_array($sourceLocale, $zenDeskLocales)) {
+            $locale = $localeMapping[$sourceLocale] ?? self::DEFAULT_LOCALE;;
+        } else {
+            $sourceLocale = explode("-", $sourceLocale);
+            $locale = $sourceLocale[0] ?? self::DEFAULT_LOCALE;
+        }
+
         return $locale;
     }
 
