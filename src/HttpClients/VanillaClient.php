@@ -10,6 +10,8 @@ namespace Vanilla\KnowledgePorter\HttpClients;
 use Garden\Http\HttpClient;
 use Garden\Http\HttpHandlerInterface;
 use Garden\Http\HttpResponse;
+use Garden\Http\HttpResponseException;
+use Garden\Schema\ValidationException;
 
 /**
  * The Vanilla API.
@@ -121,10 +123,37 @@ class VanillaClient extends HttpClient {
      * @throws NotFoundException Throw not found exception when 404 status received.
      */
     public function handleErrorResponse(HttpResponse $response, $options = []) {
-        if ($response->getStatusCode() === 404 && $this->getThrowExceptions()) {
+        if ($response->getStatusCode() === 404 && $options['throw'] ?? $this->throwExceptions) {
             throw new NotFoundException($response, $response['message'] ?? '');
+        } elseif (is_array($response->getBody()) && !empty($response->getBody()['errors'])) {
+            $message = $this->makeValidationMessage($response->getBody()['errors']);
+            if (!empty($message)) {
+                throw new HttpResponseException($response, $message);
+            }
         } else {
             parent::handleErrorResponse($response, $options);
         }
+    }
+
+    /**
+     * Make a single error message out of a list of validation error messages.
+     *
+     * @param array $errors The list of validation errors.
+     * @return string Returns the final error message.
+     */
+    private function makeValidationMessage($errors): string {
+        if (!is_array($errors)) {
+            return '';
+        }
+        $fieldErrors = [];
+        foreach ($errors as $error) {
+            $fieldErrors[$error['field']][] = $error['message'];
+        }
+        $result = [];
+        foreach ($fieldErrors as $field => $errors) {
+            $result[] = $field.': '.implode(', ', $errors);
+        }
+        $message = implode('; ', $result);
+        return $message;
     }
 }
