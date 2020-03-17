@@ -138,7 +138,7 @@ class ZendeskSource extends AbstractSource {
                 'foreignID' => ["column" => 'id', "filter" => [$this, "addPrefix"]],
                 'knowledgeCategoryID' => ["column" => 'section_id', "filter" => [$this, "addPrefix"]],
                 'format' => 'format',
-                'locale' => ['column' => 'source_locale', 'filter' => [$this, 'getSourceLocale']],
+                'locale' => ['column' => 'locale', 'filter' => [$this, 'getSourceLocale']],
                 'name' => 'name',
                 'body' => ['column' => 'body', 'filter' => [$this, 'parseUrls']],
                 'alias' => ['column' => 'id', 'filter' => [$this, 'setAlias']],
@@ -222,23 +222,17 @@ class ZendeskSource extends AbstractSource {
      */
     protected function getSourceLocale(string $sourceLocale): string {
         $localeMapping = [
-            "en-us" => "en",
             "en-gb" => "en_GB",
             "es-mx" => "es_MX",
-            "fr-fr" => "fr",
             "fr-ca" => "fr_CA",
             "mk-mk" => "mk_MK",
             "ms-my" => "ms_MY",
-            "pt-pt" => "pt",
             "pt-br" => "pt_BR",
-            "zh-zh" => "zh",
             "zh-tw" => "zh_TW",
             "zh-za" => "zu_Za"
         ];
 
-        $zenDeskLocales = array_keys($localeMapping);
-
-        if (in_array($sourceLocale, $zenDeskLocales)) {
+        if (isset($localeMapping[$sourceLocale])) {
             $locale = $localeMapping[$sourceLocale];
         } else {
             $sourceLocale = explode("-", $sourceLocale);
