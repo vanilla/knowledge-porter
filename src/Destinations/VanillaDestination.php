@@ -256,7 +256,7 @@ class VanillaDestination extends AbstractDestination {
         return Schema::parse([
             "type:s?" => ["default" => 'vanilla'],
             "domain:s" => [
-                "description" => "Vanilla kb api domain.",
+                "description" => "Vanilla knowledge base domain.",
                 "minLength" => 5
             ],
             "token:s" => [
