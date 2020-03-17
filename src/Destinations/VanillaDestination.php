@@ -260,7 +260,7 @@ class VanillaDestination extends AbstractDestination {
                 "minLength" => 5
             ],
             "token:s" => [
-                "description" => "Vanilla api Berear api token. Ex: 8piiaCXA2ts"
+                "description" => "Vanilla api Bearer token. Ex: 8piiaCXA2ts"
             ],
             "update:s?" => [
                 "description" => "Destination update mode.",
