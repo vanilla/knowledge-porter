@@ -23,6 +23,8 @@ class ZendeskSource extends AbstractSource {
     const PAGE_END = 10;
 
     const DEFAULT_SOURCE_LOCALE = 'en-us';
+    const DEFAULT_LOCALE = 'en';
+
     /**
      * @var ZendeskClient
      */
@@ -81,7 +83,7 @@ class ZendeskSource extends AbstractSource {
                 'name' => 'name',
                 'description' => 'description',
                 'urlCode' => ['column' => 'html_url', 'filter' => [$this, 'extractUrlSlug']],
-                'sourceLocale' => 'locale',
+                'sourceLocale' => ['column' => 'source_locale', 'filter' => [$this, 'getSourceLocale']],
                 'viewType' => 'viewType',
                 'sortArticles' => 'sortArticles',
                 'dateUpdated' => 'updated_at',
@@ -136,7 +138,7 @@ class ZendeskSource extends AbstractSource {
                 'foreignID' => ["column" => 'id', "filter" => [$this, "addPrefix"]],
                 'knowledgeCategoryID' => ["column" => 'section_id', "filter" => [$this, "addPrefix"]],
                 'format' => 'format',
-                'locale' => 'locale',
+                'locale' => ['column' => 'locale', 'filter' => [$this, 'getSourceLocale']],
                 'name' => 'name',
                 'body' => ['column' => 'body', 'filter' => [$this, 'parseUrls']],
                 'alias' => ['column' => 'id', 'filter' => [$this, 'setAlias']],
@@ -215,11 +217,28 @@ class ZendeskSource extends AbstractSource {
     /**
      * Get source locale
      *
-     * @param mixed $str
+     * @param string $sourceLocale
      * @return string
      */
-    protected function getSourceLocale($str): string {
-        $locale = $str;
+    protected function getSourceLocale(string $sourceLocale): string {
+        $localeMapping = [
+            "en-gb" => "en_GB",
+            "es-mx" => "es_MX",
+            "fr-ca" => "fr_CA",
+            "mk-mk" => "mk_MK",
+            "ms-my" => "ms_MY",
+            "pt-br" => "pt_BR",
+            "zh-tw" => "zh_TW",
+            "zh-za" => "zu_Za"
+        ];
+
+        if (isset($localeMapping[$sourceLocale])) {
+            $locale = $localeMapping[$sourceLocale];
+        } else {
+            $sourceLocale = explode("-", $sourceLocale);
+            $locale = $sourceLocale[0];
+        }
+
         return $locale;
     }
 
