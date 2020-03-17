@@ -8,6 +8,7 @@
 namespace Vanilla\KnowledgePorter\Sources;
 
 use DOMDocument;
+use Garden\Schema\Schema;
 use Psr\Container\ContainerInterface;
 use Vanilla\KnowledgePorter\HttpClients\HttpLogMiddleware;
 use Vanilla\KnowledgePorter\HttpClients\ZendeskClient;
@@ -262,7 +263,7 @@ class ZendeskSource extends AbstractSource {
 
     /**
      * Replace urls with new domain.
-     * 
+     *
      * @param string $body
      * @param string $sourceDomain
      * @param string $targetBaseUrl
@@ -298,9 +299,12 @@ HTML;
      * @param array $config
      */
     public function setConfig(array $config): void {
+        /** @var Schema $schema */
+        $schema = $this->configSchema();
+        $config = $schema->validate($config);
         $this->config = $config;
 
-        $domain = $this->config['domain'] ?? null;
+        $domain = $this->config['domain'];
         $domain = "https://$domain";
 
         if ($config['api']['cache'] ?? true) {
@@ -311,5 +315,75 @@ HTML;
         }
         $this->zendesk->setToken($this->config['token']);
         $this->zendesk->setBaseUrl($domain);
+    }
+
+    /**
+     * Get schema for config.
+     *
+     * @return Schema
+     */
+    private function configSchema(): Schema {
+        return Schema::parse([
+            "type:s?" => ["default" => 'zendesk'],
+            "foreignIDPrefix:s?" => ["default" => 'zd-'],
+            "domain:s" => [
+                "description" => "Zendesk api domain.",
+                "minLength" => 5
+            ],
+            "token:s" => [
+                "description" => "Zendesk api token. Ex: dev@mail.ru/token:8piiaCXA2ts"
+            ],
+            "sourceLocale:s?" => [
+                "description" => "Zendesk api content source locale. Ex: en-us",
+                "default" => self::DEFAULT_SOURCE_LOCALE
+            ],
+            "pageLimit:i?" => [
+                "default" => 100,
+                "minimum" => 1,
+                "maximum" => 300,
+            ],
+            "pageFrom:i?" => [
+                "description" => "Page number to start pull from api.",
+                "default" => 1,
+                "minimum" => 1,
+                "maximum" => 1000,
+            ],
+            "pageTo:i?" => [
+                "description" => "Page number to end pull from api.",
+                "default" => 100,
+                "minimum" => 1,
+                "maximum" => 1000,
+            ],
+            "import:o?" => [
+                "description" => "Import by content type: categories, sections, articles.",
+                "properties" => [
+                    "categories" => [
+                        "type" => "boolean",
+                        "default" => true,
+                    ],
+                    "sections" => [
+                        "type" => "boolean",
+                        "default" => true,
+                    ],
+                    "articles" => [
+                        "type" => "boolean",
+                        "default" => true,
+                    ],
+                ],
+            ],
+            "api:o?" => [
+                "properties" => [
+                    "log" => [
+                        "type" => "boolean",
+                        "default" => true,
+                    ],
+                    "cache" => [
+                        "type" => "boolean",
+                        "default" => true,
+                    ],
+                ],
+
+            ]
+        ]);
     }
 }

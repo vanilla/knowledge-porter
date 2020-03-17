@@ -7,6 +7,7 @@
 
 namespace Vanilla\KnowledgePorter\Destinations;
 
+use Garden\Schema\Schema;
 use Psr\Container\ContainerInterface;
 use Vanilla\KnowledgePorter\HttpClients\HttpCacheMiddleware;
 use Vanilla\KnowledgePorter\HttpClients\HttpLogMiddleware;
@@ -177,7 +178,11 @@ class VanillaDestination extends AbstractDestination {
      * @param array $config
      */
     public function setConfig(array $config): void {
+        /** @var Schema $schema */
+        $schema = $this->configSchema();
+        $config = $schema->validate($config);
         $this->config = $config;
+
         $domain = $this->config['domain'] ?? null;
         $domain = "http://$domain";
 
@@ -240,5 +245,45 @@ class VanillaDestination extends AbstractDestination {
                 break;
         }
         return $res;
+    }
+
+    /**
+     * Get schema for config.
+     *
+     * @return Schema
+     */
+    private function configSchema(): Schema {
+        return Schema::parse([
+            "type:s?" => ["default" => 'zendesk'],
+            "domain:s" => [
+                "description" => "Zendesk api domain.",
+                "minLength" => 5
+            ],
+            "token:s" => [
+                "description" => "Zendesk api token. Ex: dev@mail.ru/token:8piiaCXA2ts"
+            ],
+            "update:s?" => [
+                "description" => "Destination update mode.",
+                "enum" => [
+                    self::UPDATE_MODE_ALWAYS,
+                    self::UPDATE_MODE_ON_CHANGE,
+                    self::UPDATE_MODE_ON_DATE
+                ],
+                "default" => self::UPDATE_MODE_ALWAYS
+            ],
+            "api:o?" => [
+                "properties" => [
+                    "log" => [
+                        "type" => "boolean",
+                        "default" => true,
+                    ],
+                    "cache" => [
+                        "type" => "boolean",
+                        "default" => true,
+                    ],
+                ],
+
+            ]
+        ]);
     }
 }
