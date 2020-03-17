@@ -118,11 +118,32 @@ class VanillaDestination extends AbstractDestination {
     }
 
     /**
-     * @param iterable $rows
+     * Import articles.
+     *
+     * @param iterable $rows An iterator of articles to import.
      */
     public function importKnowledgeArticles(iterable $rows): void {
+        try {
+            $this->logger->beginInfo("Importing articles");
+            $counts = $this->importKnowledgeArticlesInternal($rows);
+            $this->logger->end("Done (added: {added}, updated: {updated}, skipped: {skipped})", $counts);
+        } catch (\Exception $ex) {
+            $this->logger->endError($ex->getMessage());
+        }
+    }
+
+    /**
+     * Internal implementation of article import.
+     *
+     * @param iterable $rows
+     * @return array Returns an array in the format: `['added' => int, 'updated' => int, 'skipped' => int]`.
+     */
+    private function importKnowledgeArticlesInternal(iterable $rows): array {
+        $added = $updated = $skipped = 0;
+
         foreach ($rows as $row) {
             if (($row['skip'] ?? '') === 'true') {
+                $skipped++;
                 continue;
             }
 
@@ -130,6 +151,7 @@ class VanillaDestination extends AbstractDestination {
                 $existingCategory = $this->vanillaApi->getKnowledgeCategoryBySmartID($row["knowledgeCategoryID"]);
             } catch (NotFoundException $ex) {
                 $this->logger->warning('knowledge category not found');
+                $skipped++;
                 continue;
             }
 
@@ -143,13 +165,19 @@ class VanillaDestination extends AbstractDestination {
                     $patch = $this->compareFields($existingArticle, $row, self::ARTICLE_EDIT_FIELDS);
                     if (!empty($patch)) {
                         $this->vanillaApi->patch('/api/v2/articles/' . $existingArticle['articleID'], $patch);
+                        $updated++;
+                    } else {
+                        $skipped++;
                     }
                 } catch (NotFoundException $ex) {
                     $response = $this->vanillaApi->post('/api/v2/articles', $row)->getBody();
-                    $this->vanillaApi->put('/api/v2/articles/'.$response['articleID'].'/aliases', ["aliases" => [$alias]]);
+                    $this->vanillaApi->put('/api/v2/articles/' . $response['articleID'] . '/aliases', ["aliases" => [$alias]]);
+                    $added++;
                 }
             }
         }
+
+        return ['added' => $added, 'updated' => $updated, 'skipped' => $skipped];
     }
 
     /**
@@ -186,12 +214,14 @@ class VanillaDestination extends AbstractDestination {
         $domain = $this->config['domain'] ?? null;
         $domain = "http://$domain";
 
-        if ($config['api']['cache'] ?? true) {
-            $this->vanillaApi->addMiddleware($this->container->get(HttpCacheMiddleware::class));
-        }
         if ($config['api']['log'] ?? true) {
             $this->vanillaApi->addMiddleware($this->container->get(HttpLogMiddleware::class));
         }
+
+        if ($config['api']['cache'] ?? true) {
+            $this->vanillaApi->addMiddleware($this->container->get(HttpCacheMiddleware::class));
+        }
+
         $this->vanillaApi->setToken($this->config['token']);
         $this->vanillaApi->setBaseUrl($domain);
     }

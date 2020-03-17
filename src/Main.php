@@ -16,6 +16,7 @@ use Psr\Log\LoggerInterface;
 use Vanilla\KnowledgePorter\Commands\AbstractCommand;
 use Vanilla\KnowledgePorter\HttpClients\HttpCacheMiddleware;
 use Vanilla\KnowledgePorter\HttpClients\HttpLogMiddleware;
+use Vanilla\KnowledgePorter\HttpClients\HttpRateLimitMiddleware;
 use Vanilla\KnowledgePorter\HttpClients\VanillaClient;
 use Vanilla\KnowledgePorter\HttpClients\ZendeskClient;
 
@@ -114,8 +115,11 @@ final class Main {
             ->setShared(true)
 
             ->rule(\Psr\Log\LoggerAwareInterface::class)
-            ->addCall('setLogger');
+            ->addCall('setLogger')
 
+            ->rule(TaskLoggerAwareInterface::class)
+            ->addCall('setLogger')
+            ;
 
 
         $di
@@ -133,6 +137,7 @@ final class Main {
             ->setShared(true)
 
             ->rule(ZendeskClient::class)
+            ->addCall('addMiddleware', [new Reference(HttpRateLimitMiddleware::class)])
 //            ->addCall('addMiddleware', [new Reference(\Vanilla\Analyzer\HttpRetryMiddleware::class)])
             ->setShared(false)
 
