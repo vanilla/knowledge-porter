@@ -254,13 +254,13 @@ class VanillaDestination extends AbstractDestination {
      */
     private function configSchema(): Schema {
         return Schema::parse([
-            "type:s?" => ["default" => 'zendesk'],
+            "type:s?" => ["default" => 'vanilla'],
             "domain:s" => [
-                "description" => "Zendesk api domain.",
+                "description" => "Vanilla kb api domain.",
                 "minLength" => 5
             ],
             "token:s" => [
-                "description" => "Zendesk api token. Ex: dev@mail.ru/token:8piiaCXA2ts"
+                "description" => "Vanilla api Berear api token. Ex: 8piiaCXA2ts"
             ],
             "update:s?" => [
                 "description" => "Destination update mode.",

@@ -327,7 +327,7 @@ HTML;
             "type:s?" => ["default" => 'zendesk'],
             "foreignIDPrefix:s?" => ["default" => 'zd-'],
             "domain:s" => [
-                "description" => "Zendesk api domain.",
+                "description" => "Zendesk domain.",
                 "minLength" => 5
             ],
             "token:s" => [
