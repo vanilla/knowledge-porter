@@ -11,7 +11,6 @@ use Garden\Http\HttpClient;
 use Garden\Http\HttpHandlerInterface;
 use Garden\Http\HttpResponse;
 use Garden\Http\HttpResponseException;
-use Garden\Schema\ValidationException;
 
 /**
  * The Vanilla API.
