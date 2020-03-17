@@ -330,6 +330,10 @@ HTML;
                 "description" => "Zendesk domain.",
                 "minLength" => 5
             ],
+            "targetDomain:s?" => [
+                "description" => "Target domain.",
+                "minLength" => 5
+            ],
             "token:s" => [
                 "description" => "Zendesk api token. Ex: dev@mail.ru/token:8piiaCXA2ts"
             ],
