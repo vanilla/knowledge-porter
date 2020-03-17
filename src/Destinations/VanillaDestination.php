@@ -178,6 +178,9 @@ class VanillaDestination extends AbstractDestination {
      */
     public function setConfig(array $config): void {
         $this->config = $config;
+        $domain = $this->config['domain'] ?? null;
+        $domain = "http://$domain";
+
         if ($config['api']['cache'] ?? true) {
             $this->vanillaApi->addMiddleware($this->container->get(HttpCacheMiddleware::class));
         }
@@ -185,7 +188,7 @@ class VanillaDestination extends AbstractDestination {
             $this->vanillaApi->addMiddleware($this->container->get(HttpLogMiddleware::class));
         }
         $this->vanillaApi->setToken($this->config['token']);
-        $this->vanillaApi->setBaseUrl($this->config['baseUrl']);
+        $this->vanillaApi->setBaseUrl($domain);
     }
 
     /**
