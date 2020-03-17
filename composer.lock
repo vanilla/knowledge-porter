@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "cb224d85cd1a43bba0402bd0d9164dec",
+    "content-hash": "6c6246214e7ae7b58cec6496c3bff02f",
     "packages": [
         {
             "name": "psr/cache",
@@ -575,6 +575,45 @@
             ],
             "description": "An unbloated HTTP client library for building RESTful API clients.",
             "time": "2019-08-18T02:08:03+00:00"
+        },
+        {
+            "name": "vanilla/garden-schema",
+            "version": "v1.10.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/vanilla/garden-schema.git",
+                "reference": "dded82253087836adc8c3274f75dcad185f10f67"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/vanilla/garden-schema/zipball/dded82253087836adc8c3274f75dcad185f10f67",
+                "reference": "dded82253087836adc8c3274f75dcad185f10f67",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=5.6.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^6"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Garden\\Schema\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Todd Burry",
+                    "email": "todd@vanillaforums.com"
+                }
+            ],
+            "description": "A simple data validation and cleaning library based on JSON Schema.",
+            "time": "2019-12-01T20:32:59+00:00"
         }
     ],
     "packages-dev": [
@@ -2131,7 +2170,9 @@
     "prefer-lowest": false,
     "platform": {
         "php": ">=7.2",
-        "ext-json": "*"
+        "ext-json": "*",
+        "ext-dom": "*",
+        "ext-mbstring": "*"
     },
     "platform-dev": []
 }

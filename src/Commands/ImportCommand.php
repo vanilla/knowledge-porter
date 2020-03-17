@@ -89,7 +89,7 @@ class ImportCommand extends AbstractCommand {
         $source = $this->container->get($sourceClass);
         $source->setDestination($dest);
         $sourceConfig = $this->config['source'];
-        $sourceConfig['targetDomain'] = $this->config['destination']['domain'] ?? null;
+        $sourceConfig['targetDomain'] = $sourceConfig['targetDomain'] ?? $this->config['destination']['domain'];
         $source->setConfig($sourceConfig);
         return $source;
     }
