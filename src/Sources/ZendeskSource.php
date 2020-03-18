@@ -8,6 +8,7 @@
 namespace Vanilla\KnowledgePorter\Sources;
 
 use DOMDocument;
+use DOMNode;
 use Garden\Schema\Schema;
 use Psr\Container\ContainerInterface;
 use Vanilla\KnowledgePorter\HttpClients\HttpLogMiddleware;
@@ -272,14 +273,13 @@ class ZendeskSource extends AbstractSource {
      * @return string
      */
     public static function replaceUrls(string $body, string $sourceDomain, string $targetBaseUrl, string $prefix) {
-
         $contentPrefix = <<<HTML
 <html><head><meta content="text/html; charset=utf-8" http-equiv="Content-Type"></head>
 <body>
 HTML;
         $contentSuffix = "</body></html>";
         $dom = new DOMDocument();
-        @$dom->loadHTML($contentPrefix . $body . $contentSuffix, LIBXML_HTML_NOIMPLIED| LIBXML_HTML_NODEFDTD);
+        @$dom->loadHTML($contentPrefix . $body . $contentSuffix,LIBXML_HTML_NOIMPLIED| LIBXML_HTML_NODEFDTD);
 
         $links = $dom->getElementsByTagName('a');
         foreach ($links as $link) {
@@ -290,13 +290,39 @@ HTML;
                 $link->setAttribute('href', $newLink);
             }
         }
-        return $dom->saveHTML();
+        $body = $dom->getElementsByTagName('body');
+
+        // extract all the elements from the body.
+        $innerHTML = "";
+        foreach ($body as $element) {
+            $innerHTML .= self::domInnerHTML($element);
+        }
+
+        return $innerHTML;
+    }
+
+    /**
+     * Traverse a DomNode and return all the inner elements.
+     *
+     * @param DOMNode $element
+     * @return string
+     */
+    private static function domInnerHTML(DOMNode $element):string {
+        $innerHTML = "";
+        $children  = $element->childNodes;
+
+        foreach ($children as $child) {
+            $innerHTML .= $element->ownerDocument->saveHTML($child);
+        }
+
+        return $innerHTML;
     }
 
     /**
      * Set config values.
      *
      * @param array $config
+     * @throws \Garden\Schema\ValidationException
      */
     public function setConfig(array $config): void {
         /** @var Schema $schema */
