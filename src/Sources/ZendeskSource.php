@@ -307,12 +307,13 @@ HTML;
         $domain = $this->config['domain'];
         $domain = "https://$domain";
 
-        if ($config['api']['cache'] ?? true) {
-            $this->zendesk->addMiddleware($this->container->get(HttpCacheMiddleware::class));
-        }
         if ($config['api']['log'] ?? true) {
             $this->zendesk->addMiddleware($this->container->get(HttpLogMiddleware::class));
         }
+        if ($config['api']['cache'] ?? true) {
+            $this->zendesk->addMiddleware($this->container->get(HttpCacheMiddleware::class));
+        }
+
         $this->zendesk->setToken($this->config['token']);
         $this->zendesk->setBaseUrl($domain);
     }

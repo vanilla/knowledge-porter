@@ -10,13 +10,15 @@ namespace Vanilla\KnowledgePorter\Destinations;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerAwareTrait;
 use Vanilla\KnowledgePorter\ConfigurableTrait;
+use Vanilla\KnowledgePorter\TaskLoggerAwareInterface;
+use Vanilla\KnowledgePorter\TaskLoggerAwareTrait;
 
 /**
  * Class AbstractDestination
  * @package Vanilla\KnowledgePorter\Destinations
  */
-abstract class AbstractDestination implements LoggerAwareInterface {
-    use ConfigurableTrait, LoggerAwareTrait;
+abstract class AbstractDestination implements TaskLoggerAwareInterface {
+    use ConfigurableTrait, TaskLoggerAwareTrait;
 
     /**
      * Import knowledge bases from source to destination.
