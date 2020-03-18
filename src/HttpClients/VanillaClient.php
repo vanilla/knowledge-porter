@@ -122,7 +122,7 @@ class VanillaClient extends HttpClient {
      * @throws NotFoundException Throw not found exception when 404 status received.
      */
     public function handleErrorResponse(HttpResponse $response, $options = []) {
-        if ($response->getStatusCode() === 404 && $options['throw'] ?? $this->throwExceptions) {
+        if ($response->getStatusCode() === 404 && ($options['throw'] ?? $this->throwExceptions)) {
             throw new NotFoundException($response, $response['message'] ?? '');
         } elseif (is_array($response->getBody()) && !empty($response->getBody()['errors'])) {
             $message = $this->makeValidationMessage($response->getBody()['errors']);
