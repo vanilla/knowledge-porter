@@ -272,14 +272,13 @@ class ZendeskSource extends AbstractSource {
      * @return string
      */
     public static function replaceUrls(string $body, string $sourceDomain, string $targetBaseUrl, string $prefix) {
-
         $contentPrefix = <<<HTML
 <html><head><meta content="text/html; charset=utf-8" http-equiv="Content-Type"></head>
 <body>
 HTML;
         $contentSuffix = "</body></html>";
         $dom = new DOMDocument();
-        @$dom->loadHTML($contentPrefix . $body . $contentSuffix, LIBXML_HTML_NOIMPLIED| LIBXML_HTML_NODEFDTD);
+        @$dom->loadHTML($contentPrefix . $body . $contentSuffix,LIBXML_HTML_NOIMPLIED| LIBXML_HTML_NODEFDTD);
 
         $links = $dom->getElementsByTagName('a');
         foreach ($links as $link) {
@@ -290,7 +289,18 @@ HTML;
                 $link->setAttribute('href', $newLink);
             }
         }
-        return $dom->saveHTML();
+
+        $body =  $dom->saveHTML();
+
+        // The DOM Document added starting and ending tags. We need to remove them.
+        $body = preg_replace('/^<body>/', '', $body);
+        $body = preg_replace('/<\/body>$/', '', $body);
+        $body = preg_replace('/^<html>/', '', $body);
+        $body = preg_replace('/<\/html>$/', '', $body);
+        $body = preg_replace('/^<head>/', '', $body);
+        $body = preg_replace('/<\/head>$/', '', $body);
+
+        return $body;
     }
 
     /**
