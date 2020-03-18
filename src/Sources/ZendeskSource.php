@@ -8,6 +8,7 @@
 namespace Vanilla\KnowledgePorter\Sources;
 
 use DOMDocument;
+use DOMNode;
 use Garden\Schema\Schema;
 use Psr\Container\ContainerInterface;
 use Vanilla\KnowledgePorter\HttpClients\HttpLogMiddleware;
@@ -289,24 +290,39 @@ HTML;
                 $link->setAttribute('href', $newLink);
             }
         }
+        $body = $dom->getElementsByTagName('body');
 
-        $body =  $dom->saveHTML();
+        // extract all the elements from the body.
+        $innerHTML = "";
+        foreach ($body as $element) {
+            $innerHTML .= self::domInnerHTML($element);
+        }
 
-        // The DOM Document added starting and ending tags. We need to remove them.
-        $body = preg_replace('/^<body>/', '', $body);
-        $body = preg_replace('/<\/body>$/', '', $body);
-        $body = preg_replace('/^<html>/', '', $body);
-        $body = preg_replace('/<\/html>$/', '', $body);
-        $body = preg_replace('/^<head>/', '', $body);
-        $body = preg_replace('/<\/head>$/', '', $body);
+        return $innerHTML;
+    }
 
-        return $body;
+    /**
+     * Traverse a DomNode and return all the inner elements.
+     *
+     * @param DOMNode $element
+     * @return string
+     */
+    private static function domInnerHTML(DOMNode $element):string {
+        $innerHTML = "";
+        $children  = $element->childNodes;
+
+        foreach ($children as $child) {
+            $innerHTML .= $element->ownerDocument->saveHTML($child);
+        }
+
+        return $innerHTML;
     }
 
     /**
      * Set config values.
      *
      * @param array $config
+     * @throws \Garden\Schema\ValidationException
      */
     public function setConfig(array $config): void {
         /** @var Schema $schema */
