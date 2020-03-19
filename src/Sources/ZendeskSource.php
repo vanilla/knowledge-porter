@@ -146,6 +146,7 @@ class ZendeskSource extends AbstractSource {
                 'name' => 'name',
                 'body' => ['column' => 'body', 'filter' => [$this, 'parseUrls']],
                 'alias' => ['column' => 'id', 'filter' => [$this, 'setAlias']],
+                'dateUpdated' => 'updated_at',
             ]);
             $dest = $this->getDestination();
             $dest->importKnowledgeArticles($knowledgeArticles);
