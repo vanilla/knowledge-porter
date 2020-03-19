@@ -162,7 +162,7 @@ class VanillaDestination extends AbstractDestination {
                 try {
                     // This should probably grab from the edit endpoint because that's what you'll be comparing to.
                     $existingArticle = $this->vanillaApi->getKnowledgeArticleBySmartID($row["foreignID"]);
-                    $patch = $this->compareFields($existingArticle, $row, self::ARTICLE_EDIT_FIELDS);
+                    $patch = $this->updateFields($existingArticle, $row, self::ARTICLE_EDIT_FIELDS);
                     if (!empty($patch)) {
                         $this->vanillaApi->patch('/api/v2/articles/' . $existingArticle['articleID'], $patch);
                         $updated++;
@@ -212,7 +212,8 @@ class VanillaDestination extends AbstractDestination {
         $this->config = $config;
 
         $domain = $this->config['domain'] ?? null;
-        $domain = "http://$domain";
+        $protocol = $this->config['protocol'] ?? 'https';
+        $domain = $protocol."://$domain";
 
         if ($config['api']['log'] ?? true) {
             $this->vanillaApi->addMiddleware($this->container->get(HttpLogMiddleware::class));
@@ -285,6 +286,11 @@ class VanillaDestination extends AbstractDestination {
     private function configSchema(): Schema {
         return Schema::parse([
             "type:s?" => ["default" => 'vanilla'],
+            "protocol:s?" => [
+                "description" => "Protocol to use for to access domain. (http || https)",
+                "minLength" => 4,
+                "default" => "https"
+            ],
             "domain:s" => [
                 "description" => "Vanilla knowledge base domain.",
                 "minLength" => 5
