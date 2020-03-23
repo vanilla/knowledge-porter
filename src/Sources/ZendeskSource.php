@@ -93,7 +93,35 @@ class ZendeskSource extends AbstractSource {
                 'dateUpdated' => 'updated_at',
             ]);
             $dest = $this->getDestination();
-            $dest->importKnowledgeBases($kbs);
+            $kbs = $dest->importKnowledgeBases($kbs);
+            $translate = $this->config['import']['translations'] ?? false;
+            foreach ($kbs as $kb) {
+                if ($translate) {
+                    /** @var iterable $translation */
+                    $translation = $this->zendesk->getCategoryTranslations($this->trimPrefix($kb['foreignID']));
+                    $kbTranslations = $this->transform($translation, [
+                        'recordID' => ['placeholder' => $kb['knowledgeBaseID']],
+                        'dateUpdated' => 'updated_at',
+                        'recordType' => ['placeholder' => 'knowledgeBase'],
+                        'locale' => ['column' => 'locale', 'filter' => [$this, 'getSourceLocale']],
+                        'propertyName' => ['placeholder' => 'name'],
+                        'translation' => ['column' => 'title']
+                    ]);
+                    $dest->importKnowledgeBaseTranslations($kbTranslations);
+                    $translation = new \ArrayObject($translation);
+
+                    $kbTranslations = $this->transform($translation, [
+                        'recordID' => ['placeholder' => $kb['knowledgeBaseID']],
+                        'recordType' => ['placeholder' => 'knowledgeBase'],
+                        'dateUpdated' => 'updated_at',
+                        'locale' => ['column' => 'locale', 'filter' => [$this, 'getSourceLocale']],
+                        'propertyName' => ['placeholder' => 'description'],
+                        'translation' => ['column' => 'body'],
+                        'skip' => ['column' => 'body', 'filter' => [$this, 'nullTranslation']]
+                    ]);
+                    $dest->importKnowledgeBaseTranslations($kbTranslations);
+                }
+            };
         }
     }
 
@@ -119,7 +147,35 @@ class ZendeskSource extends AbstractSource {
                 'dateUpdated' => 'updated_at',
             ]);
             $dest = $this->getDestination();
-            $dest->importKnowledgeCategories($knowledgeCategories);
+            $knowledgeCategories = $dest->importKnowledgeCategories($knowledgeCategories);
+            $translate = $this->config['import']['translations'] ?? false;
+            foreach ($knowledgeCategories as $knowledgeCategory) {
+                if ($translate) {
+                    /** @var iterable $translation */
+                    $translation = $this->zendesk->getSectionTranslations($this->trimPrefix($knowledgeCategory['foreignID']));
+                    $kbTranslations = $this->transform($translation, [
+                        'recordID' => ['placeholder' => $knowledgeCategory['knowledgeCategoryID']],
+                        'recordType' => ['placeholder' => 'knowledgeCategory'],
+                        'locale' => ['column' => 'locale', 'filter' => [$this, 'getSourceLocale']],
+                        'propertyName' => ['placeholder' => 'name'],
+                        'translation' => ['column' => 'title'],
+                        'dateUpdated' => 'updated_at',
+                    ]);
+                    $dest->importKnowledgeBaseTranslations($kbTranslations);
+                    $translation = new \ArrayObject($translation);
+
+                    $kbTranslations = $this->transform($translation, [
+                        'recordID' => ['placeholder' => $knowledgeCategory['knowledgeCategoryID']],
+                        'recordType' => ['placeholder' => 'knowledgeBase'],
+                        'locale' => ['column' => 'locale', 'filter' => [$this, 'getSourceLocale']],
+                        'propertyName' => ['placeholder' => 'description'],
+                        'translation' => ['column' => 'body'],
+                        'skip' => ['column' => 'body', 'filter' => [$this, 'nullTranslation']],
+                        'dateUpdated' => 'updated_at',
+                    ]);
+                    $dest->importKnowledgeBaseTranslations($kbTranslations);
+                }
+            };
         }
     }
 
@@ -177,6 +233,17 @@ class ZendeskSource extends AbstractSource {
     }
 
     /**
+     * Add foreignID prefix to string.
+     *
+     * @param mixed $str
+     * @return string
+     */
+    protected function trimPrefix($str): string {
+        $newStr = str_replace($this->config["foreignIDPrefix"], '', $str);
+        return $newStr;
+    }
+
+    /**
      * Extract url slug from zendesk category url.
      *
      * @param mixed $str
@@ -220,6 +287,16 @@ class ZendeskSource extends AbstractSource {
     }
 
     /**
+     * Check if translation filed is null
+     *
+     * @param string|null $str
+     * @return string
+     */
+    protected function nullTranslation($str): string {
+        return is_null($str) ? 'true' : 'false';
+    }
+
+    /**
      * Get source locale
      *
      * @param string $sourceLocale
@@ -250,10 +327,10 @@ class ZendeskSource extends AbstractSource {
     /**
      * Parse urls from a string.
      *
-     * @param $body
+     * @param string $body
      * @return string
      */
-    protected function parseUrls($body): string {
+    protected function parseUrls(string $body): string {
         $sourceDomain = $this->config['domain'] ?? null;
         $targetDomain = $this->config['targetDomain'] ?? null;
         $prefix = $this->config['foreignIDPrefix'] ?? null;
@@ -280,7 +357,7 @@ class ZendeskSource extends AbstractSource {
 HTML;
         $contentSuffix = "</body></html>";
         $dom = new DOMDocument();
-        @$dom->loadHTML($contentPrefix . $body . $contentSuffix,LIBXML_HTML_NOIMPLIED| LIBXML_HTML_NODEFDTD);
+        @$dom->loadHTML($contentPrefix . $body . $contentSuffix, LIBXML_HTML_NOIMPLIED| LIBXML_HTML_NODEFDTD);
 
         $links = $dom->getElementsByTagName('a');
         foreach ($links as $link) {
@@ -323,7 +400,6 @@ HTML;
      * Set config values.
      *
      * @param array $config
-     * @throws \Garden\Schema\ValidationException
      */
     public function setConfig(array $config): void {
         /** @var Schema $schema */
@@ -398,6 +474,10 @@ HTML;
                         "default" => true,
                     ],
                     "articles" => [
+                        "type" => "boolean",
+                        "default" => true,
+                    ],
+                    "translations" => [
                         "type" => "boolean",
                         "default" => true,
                     ],

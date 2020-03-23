@@ -95,6 +95,22 @@ class VanillaClient extends HttpClient {
     }
 
     /**
+     * GET /api/v2/knowledge-categories/{knowledgeCategoryID} using smartID.
+     *
+     * @param array $query
+     * @return array
+     */
+    public function getKnowledgeBaseTranslation(array $query = []): array {
+        $query['validateLocale'] = $query['validateLocale'] ?? false;
+        $result = $this->get("/api/v2/translations/kb", $query);
+        $body = $result->getBody();
+        if (count($body) === 1) {
+            $body = $body[0];
+        }
+        return $body;
+    }
+
+    /**
      *  GET /api/v2/knowledge-articles/{articleID} using vanilla api.
      *
      * @param string $paramSmartID

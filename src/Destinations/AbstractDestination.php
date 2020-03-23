@@ -25,14 +25,14 @@ abstract class AbstractDestination implements TaskLoggerAwareInterface {
      *
      * @param iterable $rows
      */
-    abstract public function importKnowledgeBases(iterable $rows): void;
+    abstract public function importKnowledgeBases(iterable $rows): iterable;
 
     /**
      * Import knowledge categories from source to destination.
      *
      * @param iterable $rows
      */
-    abstract public function importKnowledgeCategories(iterable $rows): void;
+    abstract public function importKnowledgeCategories(iterable $rows): iterable;
 
     /**
      * Import knowledge articles from source to destination.

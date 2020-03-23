@@ -64,6 +64,30 @@ class ZendeskClient extends HttpClient {
     }
 
     /**
+     * Execute GET /help_center/categories/{id}/translations.json request against zendesk api.
+     *
+     * @param string|int $categoryID
+     * @return array
+     */
+    public function getCategoryTranslations($categoryID): iterable {
+        $results = $this->get('/api/v2/help_center/categories/'.$categoryID.'/translations.json')->getBody();
+        $zendeskCategoryTranslations = $results['translations'] ?? null;
+        return $zendeskCategoryTranslations;
+    }
+
+    /**
+     * Execute GET /help_center/sections/{id}/translations.json request against zendesk api.
+     *
+     * @param string|int $sectionID
+     * @return array
+     */
+    public function getSectionTranslations($sectionID): iterable {
+        $results = $this->get('/api/v2/help_center/sections/'.$sectionID.'/translations.json')->getBody();
+        $zendeskCategoryTranslations = $results['translations'] ?? null;
+        return $zendeskCategoryTranslations;
+    }
+
+    /**
      * Execute GET /help_center/$locale/sections.json request against zendesk api.
      *
      * @param string $locale
@@ -100,5 +124,4 @@ class ZendeskClient extends HttpClient {
     public function getToken(): string {
         return $this->token;
     }
-
 }

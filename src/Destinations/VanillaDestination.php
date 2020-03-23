@@ -40,6 +40,10 @@ class VanillaDestination extends AbstractDestination {
         'sortArticles'
     ];
 
+    const KB_TRANSLATION_FIELDS = [
+        'translation',
+    ];
+
     const KB_CATEGORY_EDIT_FIELDS = [
         'name',
         ['knowledgeBaseID', 'resolveKnowledgeBaseID'],
@@ -56,7 +60,9 @@ class VanillaDestination extends AbstractDestination {
 
     /**
      * VanillaDestination constructor.
+     *
      * @param VanillaClient $vanillaApi
+     * @param ContainerInterface $container
      */
     public function __construct(VanillaClient $vanillaApi, ContainerInterface $container) {
         $this->vanillaApi = $vanillaApi;
@@ -66,7 +72,7 @@ class VanillaDestination extends AbstractDestination {
     /**
      * @param iterable $rows
      */
-    public function importKnowledgeBases(iterable $rows): void {
+    public function importKnowledgeBases(iterable $rows): iterable {
         foreach ($rows as $row) {
             if (($row['skip'] ?? '') === 'true') {
                 continue;
@@ -75,10 +81,33 @@ class VanillaDestination extends AbstractDestination {
                 $existing = $this->vanillaApi->getKnowledgeBaseBySmartID($row["foreignID"]);
                 $patch = $this->updateFields($existing, $row, self::KB_EDIT_FIELDS);
                 if (!empty($patch)) {
-                    $this->vanillaApi->patch('/api/v2/knowledge-bases/' . $existing['knowledgeBaseID'], $patch);
+                    $kb = $this->vanillaApi->patch('/api/v2/knowledge-bases/' . $existing['knowledgeBaseID'], $patch)->getBody();
                 }
             } catch (NotFoundException $ex) {
                 $kb = $this->vanillaApi->post('/api/v2/knowledge-bases', $row)->getBody();
+            }
+            $kb = $kb ?? $existing;
+            yield $kb;
+        }
+    }
+
+    /**
+     * @param iterable $rows
+     */
+    public function importKnowledgeBaseTranslations(iterable $rows) {
+        foreach ($rows as $row) {
+            if (($row['skip'] ?? 'false') === 'true') {
+                continue;
+            }
+            $lookup = $row;
+            $lookup['recordIDs'] = [$row['recordID']];
+            $existing = $this->vanillaApi->getKnowledgeBaseTranslation($lookup);
+            $patch = $this->updateFields($existing, $row, self::KB_TRANSLATION_FIELDS);
+            if (!empty($patch)) {
+                // $row contains all fields needed for translation api
+                // $patch has only 'translation' field if
+                // we use $patch as trigger, but $row as a body for translation
+                $res = $this->vanillaApi->patch('/api/v2/translations/kb', [$row]);
             }
         }
     }
@@ -86,7 +115,7 @@ class VanillaDestination extends AbstractDestination {
     /**
      * @param iterable $rows
      */
-    public function importKnowledgeCategories(iterable $rows): void {
+    public function importKnowledgeCategories(iterable $rows): iterable {
         foreach ($rows as $row) {
             if (($row['skip'] ?? '') === 'true') {
                 continue;
@@ -94,7 +123,7 @@ class VanillaDestination extends AbstractDestination {
             if (($row['rootCategory'] ?? 'false') === 'true') {
                 $result = $this->vanillaApi->get("/api/v2/knowledge-bases/".rawurlencode($row['knowledgeBaseID']));
                 $kb = $result->getBody();
-                $this->vanillaApi->patch('/api/v2/knowledge-categories/'.$kb['rootCategoryID'].'/root', ['foreignID' => $row["foreignID"]]);
+                $kbCat = $this->vanillaApi->patch('/api/v2/knowledge-categories/'.$kb['rootCategoryID'].'/root', ['foreignID' => $row["foreignID"]]);
             } else {
                 if (($row['parentID'] ?? '') === 'null') {
                     $result = $this->vanillaApi->get("/api/v2/knowledge-bases/".rawurlencode($row['knowledgeBaseID']));
@@ -105,15 +134,16 @@ class VanillaDestination extends AbstractDestination {
                     $existing = $this->vanillaApi->getKnowledgeCategoryBySmartID($row["foreignID"]);
                     $patch = $this->updateFields($existing, $row, self::KB_CATEGORY_EDIT_FIELDS);
                     if (!empty($patch)) {
-                        $this->vanillaApi->patch(
+                        $kbCat = $this->vanillaApi->patch(
                             '/api/v2/knowledge-categories/' . $existing['knowledgeCategoryID'],
                             $patch
                         );
                     }
                 } catch (NotFoundException $ex) {
-                    $this->vanillaApi->post('/api/v2/knowledge-categories', $row);
+                    $kbCat = $this->vanillaApi->post('/api/v2/knowledge-categories', $row);
                 }
             }
+            yield $kbCat ?? $existing;
         }
     }
 
@@ -192,6 +222,17 @@ class VanillaDestination extends AbstractDestination {
     }
 
     /**
+     * Get kb translations.
+     *
+     * @param array $query
+     * @return int
+     */
+    public function getKnowledgeBaseTranslation(array $query): int {
+        $translations = $this->vanillaApi->get("/api/v2/translations/kb/".'?'.http_build_query($query))->getBody();
+        return $translations;
+    }
+
+    /**
      * Resolve knowledge category ID from smartID.
      *
      * @param string $smartID
@@ -244,10 +285,9 @@ class VanillaDestination extends AbstractDestination {
             } else {
                 $fieldKey = $field;
             }
-            if (isset($new[$fieldKey]) && ($new[$fieldKey] !== $existing[$fieldKey])) {
+            if (isset($new[$fieldKey]) && ($new[$fieldKey] !== ($existing[$fieldKey] ?? null))) {
                 $res[$fieldKey] = $new[$fieldKey];
             }
-
         }
         return $res;
     }
@@ -257,6 +297,7 @@ class VanillaDestination extends AbstractDestination {
      *
      * @param array $existing
      * @param array $new
+     * @param array $extra
      * @return array
      */
     private function updateFields(array $existing, array $new, array $extra): array {
@@ -270,7 +311,7 @@ class VanillaDestination extends AbstractDestination {
                 $res = $this->compareFields($existing, $new, $extra);
                 break;
             case self::UPDATE_MODE_ON_DATE:
-                if ($existing[self::DATE_UPDATED] < $new[self::DATE_UPDATED]) {
+                if (($existing[self::DATE_UPDATED] ?? 0) < $new[self::DATE_UPDATED]) {
                     $res = $new;
                 }
                 break;
