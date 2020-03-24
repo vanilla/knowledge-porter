@@ -44,6 +44,11 @@ class VanillaDestination extends AbstractDestination {
         'translation',
     ];
 
+    const ARTICLE_TRANSLATION_FIELDS = [
+        'name',
+        'body'
+    ];
+
     const KB_CATEGORY_EDIT_FIELDS = [
         'name',
         ['knowledgeBaseID', 'resolveKnowledgeBaseID'],
@@ -115,6 +120,26 @@ class VanillaDestination extends AbstractDestination {
     /**
      * @param iterable $rows
      */
+    public function importArticleTranslations(iterable $rows) {
+        foreach ($rows as $row) {
+            if (($row['skip'] ?? 'false') === 'true') {
+                continue;
+            }
+            $existing = $this->vanillaApi->get('/api/v2/articles/'.$row['articleID'].'?'.http_build_query(['locale'=> $row['locale']]))->getBody();
+            $patch = $this->updateFields($existing, $row, self::ARTICLE_TRANSLATION_FIELDS);
+            if (!empty($patch)) {
+                // $row contains all fields needed for translation api
+                // $patch has only 'translation' field if
+                // we use $patch as trigger, but $row as a body for translation
+                $row['validateLocale'] = false;
+                $res = $this->vanillaApi->patch('/api/v2/articles/'.$row['articleID'], $row);
+            }
+        }
+    }
+
+    /**
+     * @param iterable $rows
+     */
     public function importKnowledgeCategories(iterable $rows): iterable {
         foreach ($rows as $row) {
             if (($row['skip'] ?? '') === 'true') {
@@ -152,11 +177,10 @@ class VanillaDestination extends AbstractDestination {
      *
      * @param iterable $rows An iterator of articles to import.
      */
-    public function importKnowledgeArticles(iterable $rows): void {
+    public function importKnowledgeArticles(iterable $rows): iterable {
         try {
             $this->logger->beginInfo("Importing articles");
-            $counts = $this->importKnowledgeArticlesInternal($rows);
-            $this->logger->end("Done (added: {added}, updated: {updated}, skipped: {skipped})", $counts);
+            return $this->importKnowledgeArticlesInternal($rows);
         } catch (\Exception $ex) {
             $this->logger->endError($ex->getMessage());
         }
@@ -168,7 +192,7 @@ class VanillaDestination extends AbstractDestination {
      * @param iterable $rows
      * @return array Returns an array in the format: `['added' => int, 'updated' => int, 'skipped' => int]`.
      */
-    private function importKnowledgeArticlesInternal(iterable $rows): array {
+    private function importKnowledgeArticlesInternal(iterable $rows): iterable {
         $added = $updated = $skipped = 0;
 
         foreach ($rows as $row) {
@@ -184,7 +208,7 @@ class VanillaDestination extends AbstractDestination {
                 $skipped++;
                 continue;
             }
-
+            $article = $existingArticle = null;
             if ($existingCategory) {
                 $row['knowledgeCategoryID'] = $existingCategory['knowledgeCategoryID'] ?? null;
                 $alias = $row["alias"] ?? null;
@@ -194,20 +218,23 @@ class VanillaDestination extends AbstractDestination {
                     $existingArticle = $this->vanillaApi->getKnowledgeArticleBySmartID($row["foreignID"]);
                     $patch = $this->updateFields($existingArticle, $row, self::ARTICLE_EDIT_FIELDS);
                     if (!empty($patch)) {
-                        $this->vanillaApi->patch('/api/v2/articles/' . $existingArticle['articleID'], $patch);
+                        $article = $this->vanillaApi->patch('/api/v2/articles/' . $existingArticle['articleID'], $patch)->getBody();
                         $updated++;
                     } else {
                         $skipped++;
                     }
                 } catch (NotFoundException $ex) {
-                    $response = $this->vanillaApi->post('/api/v2/articles', $row)->getBody();
-                    $this->vanillaApi->put('/api/v2/articles/' . $response['articleID'] . '/aliases', ["aliases" => [$alias]]);
+                    $article = $this->vanillaApi->post('/api/v2/articles', $row)->getBody();
+                    $this->vanillaApi->put('/api/v2/articles/' . $article['articleID'] . '/aliases', ["aliases" => [$alias]]);
                     $added++;
                 }
             }
+            yield $article ?? $existingArticle;
         }
-
-        return ['added' => $added, 'updated' => $updated, 'skipped' => $skipped];
+        $this->logger->end(
+            "Done (added: {added}, updated: {updated}, skipped: {skipped})",
+            ['added' => $added, 'updated' => $updated, 'skipped' => $skipped]
+        );
     }
 
     /**

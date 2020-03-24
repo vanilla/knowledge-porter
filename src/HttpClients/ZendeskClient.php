@@ -83,8 +83,20 @@ class ZendeskClient extends HttpClient {
      */
     public function getSectionTranslations($sectionID): iterable {
         $results = $this->get('/api/v2/help_center/sections/'.$sectionID.'/translations.json')->getBody();
-        $zendeskCategoryTranslations = $results['translations'] ?? null;
-        return $zendeskCategoryTranslations;
+        $zendeskSectionTranslations = $results['translations'] ?? null;
+        return $zendeskSectionTranslations;
+    }
+
+    /**
+     * Execute GET /help_center/articles/{id}/translations.json request against zendesk api.
+     *
+     * @param string|int $articleID
+     * @return array
+     */
+    public function getArticleTranslations($articleID): iterable {
+        $results = $this->get('/api/v2/help_center/articles/'.$articleID.'/translations.json')->getBody();
+        $zendeskArticleTranslations = $results['translations'] ?? null;
+        return $zendeskArticleTranslations;
     }
 
     /**

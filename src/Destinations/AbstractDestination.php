@@ -39,5 +39,5 @@ abstract class AbstractDestination implements TaskLoggerAwareInterface {
      *
      * @param iterable $rows
      */
-    abstract public function importKnowledgeArticles(iterable $rows): void;
+    abstract public function importKnowledgeArticles(iterable $rows): iterable;
 }
