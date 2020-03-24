@@ -74,12 +74,16 @@ abstract class AbstractSource implements LoggerAwareInterface {
             if (is_string($value)) {
                 $result[$key] = $row[$value];
             } elseif (is_array($value)) {
-                $column = $value['column'];
-                $rowValue = $row[$column];
-                if (isset($value['filter'])) {
-                    $rowValue = call_user_func($value['filter'], $rowValue, $row);
+                if (array_key_exists('placeholder', $value)) {
+                    $result[$key] = $value['placeholder'];
+                } else {
+                    $column = $value['column'];
+                    $rowValue = $row[$column];
+                    if (isset($value['filter'])) {
+                        $rowValue = call_user_func($value['filter'], $rowValue, $row);
+                    }
+                    $result[$key] = $rowValue;
                 }
-                $result[$key] = $rowValue;
             }
         }
         return $result;
