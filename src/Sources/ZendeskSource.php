@@ -216,7 +216,7 @@ class ZendeskSource extends AbstractSource {
                         'locale' => ['column' => 'locale', 'filter' => [$this, 'getSourceLocale']],
                         'name' => 'title',
                         'body' => ['column' => 'body', 'filter' => [$this, 'parseUrls']],
-                        'skip' => ['column' => ['draft', 'user_segment_id'], 'filter' => [$this, 'setSkipStatus']],
+                        'skip' => ['columns' => ['draft', 'user_segment_id'], 'filter' => [$this, 'setSkipStatus']],
                         'dateUpdated' => 'updated_at',
                     ]);
                     $dest->importArticleTranslations($kbTranslations);
