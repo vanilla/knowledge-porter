@@ -141,9 +141,8 @@ final class Main {
 //            ->addCall('addMiddleware', [new Reference(\Vanilla\Analyzer\HttpRetryMiddleware::class)])
             ->setShared(false)
 
-
             ->rule(VanillaClient::class)
-//            ->addCall('addMiddleware', [new Reference(\Vanilla\Analyzer\HttpRetryMiddleware::class)])
+            ->addCall('addMiddleware', [new Reference(HttpRateLimitMiddleware::class)])
             ->setShared(false)
         ;
 

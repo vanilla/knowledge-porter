@@ -205,7 +205,24 @@ class ZendeskSource extends AbstractSource {
                 'dateUpdated' => 'updated_at',
             ]);
             $dest = $this->getDestination();
-            $dest->importKnowledgeArticles($knowledgeArticles);
+            $kbArticles = $dest->importKnowledgeArticles($knowledgeArticles);
+            $translate = $this->config['import']['translations'] ?? false;
+            foreach ($kbArticles as $kbArticle) {
+                if ($translate) {
+                    /** @var iterable $translation */
+                    $translation = $this->zendesk->getArticleTranslations($this->trimPrefix($kbArticle['foreignID']));
+                    $kbTranslations = $this->transform($translation, [
+                        'articleID' => ["placeholder" => $kbArticle['articleID']],
+                        'knowledgeCategoryID' => ["placeholder" => $kbArticle['knowledgeCategoryID']],
+                        'format' => ["placeholder" => 'wysiwyg'],
+                        'locale' => ['column' => 'locale', 'filter' => [$this, 'getSourceLocale']],
+                        'name' => 'title',
+                        'body' => ['column' => 'body', 'filter' => [$this, 'parseUrls']],
+                        'dateUpdated' => 'updated_at',
+                    ]);
+                    $dest->importArticleTranslations($kbTranslations);
+                }
+            }
         }
         return [];
     }
