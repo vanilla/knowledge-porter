@@ -449,7 +449,7 @@ HTML;
         if ($config['api']['log'] ?? true) {
             $this->zendesk->addMiddleware($this->container->get(HttpLogMiddleware::class));
         }
-        if ($config['api']['cache'] ?? true) {
+        if ($config['api']['cache'] ?? false) {
             $this->zendesk->addMiddleware($this->container->get(HttpCacheMiddleware::class));
         }
 
