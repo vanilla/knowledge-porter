@@ -183,11 +183,8 @@ class ZendeskSource extends AbstractSource {
      * Process: GET zendesk articles, POST/PATCH vanilla knowledge base articles
      */
     private function processKnowledgeArticles() {
-        $pageLimit = $this->config['pageLimit'] ?? self::LIMIT;
-        $pageFrom = $this->config['pageFrom'] ?? self::PAGE_START;
-        $pageTo = $this->config['pageTo'] ?? self::PAGE_END;
+        list($pageLimit, $pageFrom, $pageTo) = $this->setPageLimits();
         $locale = $this->config['sourceLocale'] ?? self::DEFAULT_SOURCE_LOCALE;
-
 
         for ($page = $pageFrom; $page <= $pageTo; $page++) {
             $articles = $this->zendesk->getArticles($locale, ['page' => $page, 'per_page' => $pageLimit]);
@@ -462,6 +459,11 @@ HTML;
                 "description" => "Zendesk api content source locale. Ex: en-us",
                 "default" => self::DEFAULT_SOURCE_LOCALE
             ],
+            "articleLimit:i?" => [
+                "allowNull" => true,
+                "minimum" => 1,
+                "maximum" => 300,
+            ],
             "pageLimit:i?" => [
                 "default" => 100,
                 "minimum" => 1,
@@ -514,5 +516,26 @@ HTML;
 
             ]
         ]);
+    }
+
+    /**
+     * Set PageLimits for import.
+     *
+     * @return array
+     */
+    private function setPageLimits(): array {
+        if ($this->config['articleLimit'] ?? null) {
+            $pageLimit = $this->config['articleLimit'];
+            $pageFrom = $this->config['pageFrom'] ?? self::PAGE_START;
+            $pageTo = $pageFrom;
+            $this->logger->info('Article limit set to ' . $this->config['articleLimit'] . 'will be fetched');
+        } else {
+            $pageLimit = $this->config['pageLimit'] ?? self::LIMIT;
+            $pageFrom = $this->config['pageFrom'] ?? self::PAGE_START;
+            $pageTo = $this->config['pageTo'] ?? self::PAGE_END;
+            $this->logger->info('No Article limit set to all articles will be fetched');
+        }
+
+        return array($pageLimit, $pageFrom, $pageTo);
     }
 }
