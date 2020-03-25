@@ -199,6 +199,7 @@ class ZendeskSource extends AbstractSource {
                 'name' => 'name',
                 'body' => ['column' => 'body', 'filter' => [$this, 'parseUrls']],
                 'alias' => ['column' => 'id', 'filter' => [$this, 'setAlias']],
+                'skip' => ['columns' => ['draft', 'user_segment_id'], 'filter' => [$this, 'setSkipStatus']],
                 'dateUpdated' => 'updated_at',
             ]);
             $dest = $this->getDestination();
@@ -215,6 +216,7 @@ class ZendeskSource extends AbstractSource {
                         'locale' => ['column' => 'locale', 'filter' => [$this, 'getSourceLocale']],
                         'name' => 'title',
                         'body' => ['column' => 'body', 'filter' => [$this, 'parseUrls']],
+                        'skip' => ['column' => ['draft', 'user_segment_id'], 'filter' => [$this, 'setSkipStatus']],
                         'dateUpdated' => 'updated_at',
                     ]);
                     $dest->importArticleTranslations($kbTranslations);
@@ -408,6 +410,26 @@ HTML;
         }
 
         return $innerHTML;
+    }
+
+    /**
+     * Check if record should be be skipped.
+     *
+     * @param array $columns
+     * @param array $row
+     * @return string
+     */
+    public function setSkipStatus(array $columns, array $row):string {
+        $skip = 'false';
+        if (in_array('draft', $columns) || in_array('user_segment_id', $columns)) {
+            if (array_key_exists('draft', $row) && $row['draft']) {
+                $skip = 'true';
+            }
+            if ($row['user_segment_id'] ?? null) {
+                $skip = 'true';
+            }
+        }
+        return $skip;
     }
 
     /**
