@@ -524,7 +524,7 @@ HTML;
      * @return array
      */
     private function setPageLimits(): array {
-        if ($this->config['articleLimit'] ?? null) {
+        if ($this->config['articleLimit'] ?? false) {
             $pageLimit = $this->config['articleLimit'];
             $pageFrom = $this->config['pageFrom'] ?? self::PAGE_START;
             $pageTo = $pageFrom;
