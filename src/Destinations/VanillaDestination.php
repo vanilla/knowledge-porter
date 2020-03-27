@@ -7,6 +7,8 @@
 
 namespace Vanilla\KnowledgePorter\Destinations;
 
+use Garden\Http\HttpResponse;
+use Garden\Http\HttpResponseException;
 use Garden\Schema\Schema;
 use Psr\Container\ContainerInterface;
 use Vanilla\KnowledgePorter\HttpClients\HttpCacheMiddleware;
@@ -54,6 +56,9 @@ class VanillaDestination extends AbstractDestination {
         ['knowledgeBaseID', 'resolveKnowledgeBaseID'],
         ['parentID', 'resolveKnowledgeCategoryID'],
     ];
+
+    private static $count = 0;
+    private static $kbcats = [];
 
     /**
      * @var VanillaClient
@@ -138,38 +143,101 @@ class VanillaDestination extends AbstractDestination {
     }
 
     /**
-     * @param iterable $rows
+     * Import Knowledge Categories.
+     *
+     * @param iterable $rows An iterator of articles to import.
+     * @return iterable
      */
     public function importKnowledgeCategories(iterable $rows): iterable {
+        try {
+            $this->logger->beginInfo("Importing knowledge categories");
+            return $this->importKnowledgeCategoriesInternal($rows);
+        } catch (\Exception $ex) {
+            $this->logger->endError($ex->getMessage());
+        }
+    }
+
+    /**
+     * Try to reprocess failed knowledge categories that failed to import.
+     *
+     * @return \Generator
+     */
+    public function processFailedImportedKnowledgeCategories() {
+        $initialCount = count(self::$kbcats);
+        if ($initialCount > 0) {
+            do {
+                $this->logger->beginInfo("Retrying Importing knowledge categories");
+                $originalFailedKBCategories = self::$kbcats;
+                self::$kbcats = [];
+                $kbCategories = $this->importKnowledgeCategoriesInternal($originalFailedKBCategories);
+                $retry = (count(self::$kbcats) >= $initialCount) ? false : true;
+                if (!$retry && count(self::$kbcats) === 0) {
+                   yield $kbCategories;
+               } elseif (!$retry && count(self::$kbcats) > 0) {
+                   $this->logger->end('Error importing to ' . self::$count . ' categories');
+                   die();
+               }
+           } while ($retry);
+       }
+    }
+
+    /**
+     * Import Knowledge Categories.
+     *
+     * @param iterable $rows
+     * @return iterable
+     */
+    public function importKnowledgeCategoriesInternal(iterable $rows): iterable {
+        $added = $updated = $skipped = $failures = 0;
         foreach ($rows as $row) {
             if (($row['skip'] ?? '') === 'true') {
                 continue;
             }
+
             if (($row['rootCategory'] ?? 'false') === 'true') {
                 $result = $this->vanillaApi->get("/api/v2/knowledge-bases/".rawurlencode($row['knowledgeBaseID']));
                 $kb = $result->getBody();
-                $kbCat = $this->vanillaApi->patch('/api/v2/knowledge-categories/'.$kb['rootCategoryID'].'/root', ['foreignID' => $row["foreignID"]]);
+                $kbCat = $this->vanillaApi->patch('/api/v2/knowledge-categories/'.$kb['rootCategoryID'].'/root', ['foreignID' => $row["foreignID"]])->getBody();
+                $updated++;
             } else {
                 if (($row['parentID'] ?? '') === 'null') {
-                    $result = $this->vanillaApi->get("/api/v2/knowledge-bases/".rawurlencode($row['knowledgeBaseID']));
-                    $kb = $result->getBody();
-                    $row['parentID'] = $kb['rootCategoryID'];
+                    try {
+                        $result = $this->vanillaApi->get("/api/v2/knowledge-bases/".rawurlencode($row['knowledgeBaseID']));
+                        $kb = $result->getBody();
+                        $row['parentID'] = $kb['rootCategoryID'];
+                    } catch (HttpResponseException $exception) {
+                        $row['failed'] = true;
+                        self::$kbcats[] = $row;
+                        $failures++;
+                    }
                 };
                 try {
                     $existing = $this->vanillaApi->getKnowledgeCategoryBySmartID($row["foreignID"]);
                     $patch = $this->updateFields($existing, $row, self::KB_CATEGORY_EDIT_FIELDS);
+                    $updated++;
                     if (!empty($patch)) {
                         $kbCat = $this->vanillaApi->patch(
                             '/api/v2/knowledge-categories/' . $existing['knowledgeCategoryID'],
                             $patch
-                        );
+                        )->getBody();
                     }
-                } catch (NotFoundException $ex) {
-                    $kbCat = $this->vanillaApi->post('/api/v2/knowledge-categories', $row);
+                } catch (NotFoundException | HttpResponseException $ex) {
+                    if ($ex->getCode() === 500) {
+                        $row['failed'] = true;
+                        self::$kbcats[] = $row;
+                        $failures++;
+                    } else {
+                        $kbCat = $this->vanillaApi->post('/api/v2/knowledge-categories', $row)->getBody();
+                        $added++;
+                    }
                 }
             }
             yield $kbCat ?? $existing;
         }
+        $this->logger->end(
+            "Done (added: {added}, updated: {updated}, skipped: {skipped}, failed: {failures})",
+            ['added' => $added, 'updated' => $updated, 'skipped' => $skipped, 'failures' => $failures]
+        );
     }
 
     /**
@@ -229,7 +297,7 @@ class VanillaDestination extends AbstractDestination {
                     $added++;
                 }
             }
-            yield $article ?? $existingArticle;
+            yield $article ?? $existingArticle ?? [];
         }
         $this->logger->end(
             "Done (added: {added}, updated: {updated}, skipped: {skipped})",

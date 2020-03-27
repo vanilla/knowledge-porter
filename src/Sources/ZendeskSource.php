@@ -11,6 +11,7 @@ use DOMDocument;
 use DOMNode;
 use Garden\Schema\Schema;
 use Psr\Container\ContainerInterface;
+use Vanilla\KnowledgePorter\Destinations\VanillaDestination;
 use Vanilla\KnowledgePorter\HttpClients\HttpLogMiddleware;
 use Vanilla\KnowledgePorter\HttpClients\ZendeskClient;
 use Vanilla\KnowledgePorter\HttpClients\HttpCacheMiddleware;
@@ -60,9 +61,11 @@ class ZendeskSource extends AbstractSource {
         if ($this->config['import']['categories'] ?? true) {
             $this->processKnowledgeBases();
         }
+
         if ($this->config['import']['sections'] ?? true) {
             $this->processKnowledgeCategories();
         }
+
         if ($this->config['import']['articles'] ?? true) {
             $this->processKnowledgeArticles();
         }
@@ -127,6 +130,8 @@ class ZendeskSource extends AbstractSource {
 
     /**
      * Process: GET zendesk sections, POST/PATCH vanilla knowledge categories
+     *
+     * @return iterable
      */
     private function processKnowledgeCategories() {
         $pageLimit = $this->config['pageLimit'] ?? self::LIMIT;
@@ -134,11 +139,15 @@ class ZendeskSource extends AbstractSource {
         $pageTo = $this->config['pageTo'] ?? self::PAGE_END;
         $locale = $this->config['sourceLocale'] ?? self::DEFAULT_SOURCE_LOCALE;
 
+        /** @var VanillaDestination $dest */
+        $dest = $this->getDestination();
+
         for ($page = $pageFrom; $page <= $pageTo; $page++) {
             $categories = $this->zendesk->getSections($locale, ['page' => $page, 'per_page' => $pageLimit]);
             if (empty($categories)) {
                 break;
             }
+
             $knowledgeCategories = $this->transform($categories, [
                 'foreignID' => ["column" => 'id', "filter" => [$this, "addPrefix"]],
                 'knowledgeBaseID' => ["column" => 'category_id', "filter" => [$this, "knowledgeBaseSmartId"]],
@@ -146,38 +155,27 @@ class ZendeskSource extends AbstractSource {
                 'name' => 'name',
                 'dateUpdated' => 'updated_at',
             ]);
-            $dest = $this->getDestination();
+
             $knowledgeCategories = $dest->importKnowledgeCategories($knowledgeCategories);
             $translate = $this->config['import']['translations'] ?? false;
-            foreach ($knowledgeCategories as $knowledgeCategory) {
-                if ($translate) {
-                    /** @var iterable $translation */
-                    $translation = $this->zendesk->getSectionTranslations($this->trimPrefix($knowledgeCategory['foreignID']));
-                    $kbTranslations = $this->transform($translation, [
-                        'recordID' => ['placeholder' => $knowledgeCategory['knowledgeCategoryID']],
-                        'recordType' => ['placeholder' => 'knowledgeCategory'],
-                        'locale' => ['column' => 'locale', 'filter' => [$this, 'getSourceLocale']],
-                        'propertyName' => ['placeholder' => 'name'],
-                        'translation' => ['column' => 'title'],
-                        'dateUpdated' => 'updated_at',
-                    ]);
-                    $dest->importKnowledgeBaseTranslations($kbTranslations);
-                    $translation = new \ArrayObject($translation);
-
-                    $kbTranslations = $this->transform($translation, [
-                        'recordID' => ['placeholder' => $knowledgeCategory['knowledgeCategoryID']],
-                        'recordType' => ['placeholder' => 'knowledgeBase'],
-                        'locale' => ['column' => 'locale', 'filter' => [$this, 'getSourceLocale']],
-                        'propertyName' => ['placeholder' => 'description'],
-                        'translation' => ['column' => 'body'],
-                        'skip' => ['column' => 'body', 'filter' => [$this, 'nullTranslation']],
-                        'dateUpdated' => 'updated_at',
-                    ]);
-                    $dest->importKnowledgeBaseTranslations($kbTranslations);
-                }
-            };
+            $this->translateKnowledgeCategories($knowledgeCategories, $translate);
+        }
+        if ($this->config['import']['retrySections'] ?? true) {
+            $this->rerunProcessKnowledgeCategories($dest);
         }
     }
+
+    /**
+     * Retry processing failed knowledge categories.
+     *
+     * @param $dest
+     */
+    private function rerunProcessKnowledgeCategories(VanillaDestination $dest) {
+        $knowledgeCategories = $dest->processFailedImportedKnowledgeCategories();
+        $translate = $this->config['import']['translations'] ?? false;
+        $this->translateKnowledgeCategories($knowledgeCategories, $translate);
+    }
+
 
     /**
      * Process: GET zendesk articles, POST/PATCH vanilla knowledge base articles
@@ -559,5 +557,40 @@ HTML;
         }
 
         return array($pageLimit, $pageFrom, $pageTo);
+    }
+
+    /**
+     * @param iterable $knowledgeCategories
+     * @param bool $translate
+     */
+    private function translateKnowledgeCategories(iterable $knowledgeCategories, bool $translate) {
+        $dest = $this->getDestination();
+        foreach ($knowledgeCategories as $knowledgeCategory) {
+            if ($translate) {
+                /** @var iterable $translation */
+                $translation = $this->zendesk->getSectionTranslations($this->trimPrefix($knowledgeCategory['foreignID']));
+                $kbTranslations = $this->transform($translation, [
+                    'recordID' => ['placeholder' => $knowledgeCategory['knowledgeCategoryID']],
+                    'recordType' => ['placeholder' => 'knowledgeCategory'],
+                    'locale' => ['column' => 'locale', 'filter' => [$this, 'getSourceLocale']],
+                    'propertyName' => ['placeholder' => 'name'],
+                    'translation' => ['column' => 'title'],
+                    'dateUpdated' => 'updated_at',
+                ]);
+                $dest->importKnowledgeBaseTranslations($kbTranslations);
+                $translation = new \ArrayObject($translation);
+
+                $kbTranslations = $this->transform($translation, [
+                    'recordID' => ['placeholder' => $knowledgeCategory['knowledgeCategoryID']],
+                    'recordType' => ['placeholder' => 'knowledgeBase'],
+                    'locale' => ['column' => 'locale', 'filter' => [$this, 'getSourceLocale']],
+                    'propertyName' => ['placeholder' => 'description'],
+                    'translation' => ['column' => 'body'],
+                    'skip' => ['column' => 'body', 'filter' => [$this, 'nullTranslation']],
+                    'dateUpdated' => 'updated_at',
+                ]);
+                $dest->importKnowledgeBaseTranslations($kbTranslations);
+            }
+        };
     }
 }
