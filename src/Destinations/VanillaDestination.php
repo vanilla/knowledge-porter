@@ -232,7 +232,7 @@ class VanillaDestination extends AbstractDestination {
                     }
                 }
             }
-            yield $kbCat ?? $existing;
+            yield $kbCat ?? $existing ?? [];
         }
         $this->logger->end(
             "Done (added: {added}, updated: {updated}, skipped: {skipped}, failed: {failures})",
@@ -297,7 +297,7 @@ class VanillaDestination extends AbstractDestination {
                     $added++;
                 }
             }
-            yield $article ?? $existingArticle ?? [];
+            yield $article ?? $existingArticle;
         }
         $this->logger->end(
             "Done (added: {added}, updated: {updated}, skipped: {skipped})",
