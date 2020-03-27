@@ -57,8 +57,8 @@ class VanillaDestination extends AbstractDestination {
         ['parentID', 'resolveKnowledgeCategoryID'],
     ];
 
-    private static $count = 0;
     private static $kbcats = [];
+    private static $count = 0;
 
     /**
      * @var VanillaClient
@@ -160,34 +160,56 @@ class VanillaDestination extends AbstractDestination {
     /**
      * Try to reprocess failed knowledge categories that failed to import.
      *
-     * @return \Generator
+     * @return iterable
      */
-    public function processFailedImportedKnowledgeCategories() {
+    public function processFailedImportedKnowledgeCategories(): iterable {
         $initialCount = count(self::$kbcats);
         if ($initialCount > 0) {
-            do {
-                $this->logger->beginInfo("Retrying Importing knowledge categories");
-                $originalFailedKBCategories = self::$kbcats;
+            $retryLimit = $this->config['retryLimit'] ?? 1;
+            self::$count = $initialCount;
+            for ($i = 0; $i < $retryLimit; $i++) {
+                $retry = false;
+                $this->logger->beginInfo("Retry importing knowledge categories");
+                $originalFailedKBCategories = new \ArrayObject(self::$kbcats);
                 self::$kbcats = [];
-                $kbCategories = $this->importKnowledgeCategoriesInternal($originalFailedKBCategories);
-                $retry = (count(self::$kbcats) >= $initialCount) ? false : true;
-                if (!$retry && count(self::$kbcats) === 0) {
-                   yield $kbCategories;
-               } elseif (!$retry && count(self::$kbcats) > 0) {
-                   $this->logger->end('Error importing to ' . self::$count . ' categories');
-                   die();
-               }
-           } while ($retry);
-       }
+                $kbCategories = $this->importKnowledgeCategoriesInternal($originalFailedKBCategories, true);
+                foreach ($kbCategories as $kbCategory) {
+                    self::$count--;
+                    yield $kbCategory;
+                }
+
+                if (self::$count === 0) {
+                    $retry = false;
+                } elseif (self::$count < $initialCount) {
+                    $retry = true;
+                } elseif (self::$count === $initialCount) {
+                    $retry = false;
+                }
+
+                if (!$retry && (count(self::$kbcats) > 0)) {
+                    $this->logger->info('Error importing to ' . count(self::$kbcats) . ' categories');
+                    die();
+                }
+
+                $this->logger->end("Done(successful:{successful}, failed:{failed})",
+                    [
+                        'successful' => ($initialCount - self::$count),
+                        "failed" => count(self::$kbcats)
+                    ]
+                );
+            }
+        }
+
     }
 
     /**
      * Import Knowledge Categories.
      *
      * @param iterable $rows
+     * @param boolean $retry
      * @return iterable
      */
-    public function importKnowledgeCategoriesInternal(iterable $rows): iterable {
+    public function importKnowledgeCategoriesInternal(iterable $rows, bool $retry = false): iterable {
         $added = $updated = $skipped = $failures = 0;
         foreach ($rows as $row) {
             if (($row['skip'] ?? '') === 'true') {
@@ -209,6 +231,7 @@ class VanillaDestination extends AbstractDestination {
                         $row['failed'] = true;
                         self::$kbcats[] = $row;
                         $failures++;
+                        continue;
                     }
                 };
                 try {
@@ -226,18 +249,21 @@ class VanillaDestination extends AbstractDestination {
                         $row['failed'] = true;
                         self::$kbcats[] = $row;
                         $failures++;
+                        continue;
                     } else {
                         $kbCat = $this->vanillaApi->post('/api/v2/knowledge-categories', $row)->getBody();
                         $added++;
                     }
                 }
             }
-            yield $kbCat ?? $existing ?? [];
+            yield $kbCat ?? $existing;
         }
-        $this->logger->end(
-            "Done (added: {added}, updated: {updated}, skipped: {skipped}, failed: {failures})",
-            ['added' => $added, 'updated' => $updated, 'skipped' => $skipped, 'failures' => $failures]
-        );
+        if (!$retry) {
+            $this->logger->end(
+                "Done (added: {added}, updated: {updated}, skipped: {skipped}, failed: {failures})",
+                ['added' => $added, 'updated' => $updated, 'skipped' => $skipped, 'failures' => $failures]
+            );
+        }
     }
 
     /**
@@ -454,8 +480,11 @@ class VanillaDestination extends AbstractDestination {
                         "default" => true,
                     ],
                 ],
-
-            ]
+            ],
+            "retryLimit:i?" => [
+                "description" => "Limit for retries",
+                "default" => 1
+            ],
         ]);
     }
 }

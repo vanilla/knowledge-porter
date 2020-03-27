@@ -520,6 +520,10 @@ HTML;
                         "type" => "boolean",
                         "default" => true,
                     ],
+                    "retrySections" => [
+                        "type" => "boolean",
+                        "default" => false,
+                    ]
                 ],
             ],
             "api:o?" => [
