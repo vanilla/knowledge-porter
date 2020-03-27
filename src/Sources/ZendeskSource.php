@@ -564,6 +564,8 @@ HTML;
     }
 
     /**
+     * Translations for Knowledge Categories.
+     * 
      * @param iterable $knowledgeCategories
      * @param bool $translate
      */

@@ -7,7 +7,6 @@
 
 namespace Vanilla\KnowledgePorter\Destinations;
 
-use Garden\Http\HttpResponse;
 use Garden\Http\HttpResponseException;
 use Garden\Schema\Schema;
 use Psr\Container\ContainerInterface;
@@ -57,7 +56,10 @@ class VanillaDestination extends AbstractDestination {
         ['parentID', 'resolveKnowledgeCategoryID'],
     ];
 
+    /** @var array */
     private static $kbcats = [];
+
+    /** @var int */
     private static $count = 0;
 
     /**
@@ -158,51 +160,6 @@ class VanillaDestination extends AbstractDestination {
     }
 
     /**
-     * Try to reprocess failed knowledge categories that failed to import.
-     *
-     * @return iterable
-     */
-    public function processFailedImportedKnowledgeCategories(): iterable {
-        $initialCount = count(self::$kbcats);
-        if ($initialCount > 0) {
-            $retryLimit = $this->config['retryLimit'] ?? 1;
-            self::$count = $initialCount;
-            for ($i = 0; $i < $retryLimit; $i++) {
-                $retry = false;
-                $this->logger->beginInfo("Retry importing knowledge categories");
-                $originalFailedKBCategories = new \ArrayObject(self::$kbcats);
-                self::$kbcats = [];
-                $kbCategories = $this->importKnowledgeCategoriesInternal($originalFailedKBCategories, true);
-                foreach ($kbCategories as $kbCategory) {
-                    self::$count--;
-                    yield $kbCategory;
-                }
-
-                if (self::$count === 0) {
-                    $retry = false;
-                } elseif (self::$count < $initialCount) {
-                    $retry = true;
-                } elseif (self::$count === $initialCount) {
-                    $retry = false;
-                }
-
-                if (!$retry && (count(self::$kbcats) > 0)) {
-                    $this->logger->info('Error importing to ' . count(self::$kbcats) . ' categories');
-                    die();
-                }
-
-                $this->logger->end("Done(successful:{successful}, failed:{failed})",
-                    [
-                        'successful' => ($initialCount - self::$count),
-                        "failed" => count(self::$kbcats)
-                    ]
-                );
-            }
-        }
-
-    }
-
-    /**
      * Import Knowledge Categories.
      *
      * @param iterable $rows
@@ -263,6 +220,49 @@ class VanillaDestination extends AbstractDestination {
                 "Done (added: {added}, updated: {updated}, skipped: {skipped}, failed: {failures})",
                 ['added' => $added, 'updated' => $updated, 'skipped' => $skipped, 'failures' => $failures]
             );
+        }
+    }
+    /**
+     * Try to reprocess failed knowledge categories that failed to import.
+     *
+     * @return iterable
+     */
+    public function processFailedImportedKnowledgeCategories(): iterable {
+        $initialCount = count(self::$kbcats);
+        if ($initialCount > 0) {
+            $retryLimit = $this->config['retryLimit'] ?? 1;
+            self::$count = $initialCount;
+            for ($i = 0; $i < $retryLimit; $i++) {
+                $retry = false;
+                $this->logger->beginInfo("Retry importing knowledge categories");
+                $originalFailedKBCategories = new \ArrayObject(self::$kbcats);
+                self::$kbcats = [];
+                $kbCategories = $this->importKnowledgeCategoriesInternal($originalFailedKBCategories, true);
+                foreach ($kbCategories as $kbCategory) {
+                    self::$count--;
+                    yield $kbCategory;
+                }
+
+                if (self::$count === 0) {
+                    $retry = false;
+                } elseif (self::$count < $initialCount) {
+                    $retry = true;
+                } elseif (self::$count === $initialCount) {
+                    $retry = false;
+                }
+
+                if (!$retry && (count(self::$kbcats) > 0)) {
+                    $this->logger->info('Error importing to ' . count(self::$kbcats) . ' categories');
+                    die();
+                }
+
+                $this->logger->end("Done(successful:{successful}, failed:{failed})",
+                    [
+                        'successful' => ($initialCount - self::$count),
+                        "failed" => count(self::$kbcats)
+                    ]
+                );
+            }
         }
     }
 
