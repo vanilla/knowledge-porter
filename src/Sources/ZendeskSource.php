@@ -575,41 +575,4 @@ HTML;
 
         return array($pageLimit, $pageFrom, $pageTo);
     }
-
-    /**
-     * Translations for Knowledge Categories.
-     *
-     * @param iterable $knowledgeCategories
-     * @param bool $translate
-     */
-    private function translateKnowledgeCategories(iterable $knowledgeCategories, bool $translate) {
-        $dest = $this->getDestination();
-        foreach ($knowledgeCategories as $knowledgeCategory) {
-            if ($translate) {
-                /** @var iterable $translation */
-                $translation = $this->zendesk->getSectionTranslations($this->trimPrefix($knowledgeCategory['foreignID']));
-                $kbTranslations = $this->transform($translation, [
-                    'recordID' => ['placeholder' => $knowledgeCategory['knowledgeCategoryID']],
-                    'recordType' => ['placeholder' => 'knowledgeCategory'],
-                    'locale' => ['column' => 'locale', 'filter' => [$this, 'getSourceLocale']],
-                    'propertyName' => ['placeholder' => 'name'],
-                    'translation' => ['column' => 'title'],
-                    'dateUpdated' => 'updated_at',
-                ]);
-                $dest->importKnowledgeBaseTranslations($kbTranslations);
-                $translation = new \ArrayObject($translation);
-
-                $kbTranslations = $this->transform($translation, [
-                    'recordID' => ['placeholder' => $knowledgeCategory['knowledgeCategoryID']],
-                    'recordType' => ['placeholder' => 'knowledgeBase'],
-                    'locale' => ['column' => 'locale', 'filter' => [$this, 'getSourceLocale']],
-                    'propertyName' => ['placeholder' => 'description'],
-                    'translation' => ['column' => 'body'],
-                    'skip' => ['column' => 'body', 'filter' => [$this, 'nullTranslation']],
-                    'dateUpdated' => 'updated_at',
-                ]);
-                $dest->importKnowledgeBaseTranslations($kbTranslations);
-            }
-        };
-    }
 }
