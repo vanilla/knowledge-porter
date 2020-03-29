@@ -187,7 +187,17 @@ class ZendeskSource extends AbstractSource {
         $locale = $this->config['sourceLocale'] ?? self::DEFAULT_SOURCE_LOCALE;
 
         for ($page = $pageFrom; $page <= $pageTo; $page++) {
-            $articles = $this->zendesk->getArticles($locale, ['page' => $page, 'per_page' => $pageLimit]);
+            $queryParams = ['page' => $page, 'per_page' => $pageLimit];
+
+            $syncFrom = $this->config['syncFrom'] ?? null;
+            $syncFrom = strtotime($syncFrom);
+            $currentTime = time();
+            $syncFrom = ($syncFrom > $currentTime) ? null : $syncFrom;
+            if ($syncFrom) {
+              $queryParams['start_time'] = $syncFrom;
+            }
+
+            $articles = $this->zendesk->getArticles($locale, $queryParams);
             if (empty($articles)) {
                 break;
             }
@@ -346,7 +356,7 @@ class ZendeskSource extends AbstractSource {
      * @param string $body
      * @return string
      */
-    protected function parseUrls(string $body): string {
+    protected function parseUrls(string $body = ''): string {
         $sourceDomain = $this->config['domain'] ?? null;
         $targetDomain = $this->config['targetDomain'] ?? null;
         $prefix = $this->config['foreignIDPrefix'] ?? null;
@@ -503,6 +513,11 @@ HTML;
                 "minimum" => 1,
                 "maximum" => 1000,
             ],
+            "syncFrom:s?" => [
+                "description" => "Days or Date from which to start import or sync",
+                "allowNull" => true,
+                "minLength" => 5
+            ],
             "import:o?" => [
                 "description" => "Import by content type: categories, sections, articles.",
                 "properties" => [
@@ -559,5 +574,42 @@ HTML;
         }
 
         return array($pageLimit, $pageFrom, $pageTo);
+    }
+
+    /**
+     * Translations for Knowledge Categories.
+     *
+     * @param iterable $knowledgeCategories
+     * @param bool $translate
+     */
+    private function translateKnowledgeCategories(iterable $knowledgeCategories, bool $translate) {
+        $dest = $this->getDestination();
+        foreach ($knowledgeCategories as $knowledgeCategory) {
+            if ($translate) {
+                /** @var iterable $translation */
+                $translation = $this->zendesk->getSectionTranslations($this->trimPrefix($knowledgeCategory['foreignID']));
+                $kbTranslations = $this->transform($translation, [
+                    'recordID' => ['placeholder' => $knowledgeCategory['knowledgeCategoryID']],
+                    'recordType' => ['placeholder' => 'knowledgeCategory'],
+                    'locale' => ['column' => 'locale', 'filter' => [$this, 'getSourceLocale']],
+                    'propertyName' => ['placeholder' => 'name'],
+                    'translation' => ['column' => 'title'],
+                    'dateUpdated' => 'updated_at',
+                ]);
+                $dest->importKnowledgeBaseTranslations($kbTranslations);
+                $translation = new \ArrayObject($translation);
+
+                $kbTranslations = $this->transform($translation, [
+                    'recordID' => ['placeholder' => $knowledgeCategory['knowledgeCategoryID']],
+                    'recordType' => ['placeholder' => 'knowledgeBase'],
+                    'locale' => ['column' => 'locale', 'filter' => [$this, 'getSourceLocale']],
+                    'propertyName' => ['placeholder' => 'description'],
+                    'translation' => ['column' => 'body'],
+                    'skip' => ['column' => 'body', 'filter' => [$this, 'nullTranslation']],
+                    'dateUpdated' => 'updated_at',
+                ]);
+                $dest->importKnowledgeBaseTranslations($kbTranslations);
+            }
+        };
     }
 }

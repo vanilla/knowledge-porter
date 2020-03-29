@@ -10,6 +10,7 @@ namespace Vanilla\KnowledgePorter\Commands;
 use Garden\Cli\Args;
 use Psr\Container\ContainerInterface;
 use Vanilla\KnowledgePorter\Destinations\AbstractDestination;
+use Vanilla\KnowledgePorter\Destinations\VanillaDestination;
 use Vanilla\KnowledgePorter\Main;
 use Vanilla\KnowledgePorter\Sources\AbstractSource;
 use Garden\Schema\Schema;
@@ -79,16 +80,22 @@ class ImportCommand extends AbstractCommand {
     private function createSource(): AbstractSource {
         $destType = $this->config['destination']['type'] ?? '';
         $destClass = '\\Vanilla\\KnowledgePorter\\Destinations\\'.Main::changeCase($destType).'Destination';
-        /** @var AbstractDestination $dest */
-        $dest = $this->container->get($destClass);
-        $dest->setConfig($this->config['destination']);
-
         $sourceType = $this->config['source']['type'] ?? '';
         $sourceClass = '\\Vanilla\\KnowledgePorter\\Sources\\'.Main::changeCase($sourceType).'Source';
-        /* @var \Vanilla\KnowledgePorter\Sources\AbstractSource $source */
+        /* @var AbstractSource $source */
         $source = $this->container->get($sourceClass);
-        $source->setDestination($dest);
+        /** @var AbstractDestination $dest */
+        $dest = $this->container->get($destClass);
+
         $sourceConfig = $this->config['source'];
+        $destConfig = $this->config['destination'];
+
+        $syncFrom = $sourceConfig['syncFrom'] ?? null;
+        $destConfig['update'] = ($syncFrom) ? VanillaDestination::UPDATE_MODE_ON_CHANGE : $this->config['destination']['update'];
+        $dest->setConfig($destConfig);
+
+
+        $source->setDestination($dest);
         $sourceConfig['targetDomain'] = $sourceConfig['targetDomain'] ?? $this->config['destination']['domain'];
         $source->setConfig($sourceConfig);
         return $source;
