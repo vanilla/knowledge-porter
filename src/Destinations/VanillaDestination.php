@@ -59,9 +59,6 @@ class VanillaDestination extends AbstractDestination {
     /** @var array */
     private static $kbcats = [];
 
-    /** @var int */
-    private static $count = 0;
-
     /**
      * @var VanillaClient
      */
@@ -231,23 +228,23 @@ class VanillaDestination extends AbstractDestination {
         $initialCount = count(self::$kbcats);
         if ($initialCount > 0) {
             $retryLimit = $this->config['retryLimit'] ?? 1;
-            self::$count = $initialCount;
-            for ($i = 0; $i < $retryLimit; $i++) {
+            $count = $initialCount;
+            for ($i = 0; $i <= $retryLimit; $i++) {
                 $retry = false;
                 $this->logger->beginInfo("Retry importing knowledge categories");
                 $originalFailedKBCategories = new \ArrayObject(self::$kbcats);
                 self::$kbcats = [];
                 $kbCategories = $this->importKnowledgeCategoriesInternal($originalFailedKBCategories, true);
                 foreach ($kbCategories as $kbCategory) {
-                    self::$count--;
+                    $count--;
                     yield $kbCategory;
                 }
 
-                if (self::$count === 0) {
+                if ($count === 0) {
                     $retry = false;
-                } elseif (self::$count < $initialCount) {
+                } elseif ($count < $initialCount) {
                     $retry = true;
-                } elseif (self::$count === $initialCount) {
+                } elseif ($count === $initialCount) {
                     $retry = false;
                 }
 
