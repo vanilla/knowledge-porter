@@ -123,7 +123,7 @@ class ZendeskClient extends HttpClient {
     public function getArticles(string $locale, array $query = []): iterable {
         $uri = "/api/v2/help_center/$locale/articles.json";
 
-        if ($query['start_time'] ?? null) {
+        if ($query['start_time'] ?? false) {
             $uri = "/api/v2/help_center/incremental/articles.json";
         }
 
