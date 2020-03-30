@@ -7,6 +7,7 @@
 
 namespace Vanilla\KnowledgePorter\Destinations;
 
+use Garden\Http\HttpResponseException;
 use Garden\Schema\Schema;
 use Psr\Container\ContainerInterface;
 use Vanilla\KnowledgePorter\HttpClients\HttpCacheMiddleware;
@@ -54,6 +55,9 @@ class VanillaDestination extends AbstractDestination {
         ['knowledgeBaseID', 'resolveKnowledgeBaseID'],
         ['parentID', 'resolveKnowledgeCategoryID'],
     ];
+
+    /** @var array */
+    private static $kbcats = [];
 
     /**
      * @var VanillaClient
@@ -138,37 +142,124 @@ class VanillaDestination extends AbstractDestination {
     }
 
     /**
-     * @param iterable $rows
+     * Import Knowledge Categories.
+     *
+     * @param iterable $rows An iterator of articles to import.
+     * @return iterable
      */
     public function importKnowledgeCategories(iterable $rows): iterable {
+        try {
+            $this->logger->beginInfo("Importing knowledge categories");
+            return $this->importKnowledgeCategoriesInternal($rows);
+        } catch (\Exception $ex) {
+            $this->logger->endError($ex->getMessage());
+        }
+    }
+
+    /**
+     * Import Knowledge Categories.
+     *
+     * @param iterable $rows
+     * @param boolean $retry
+     * @return iterable
+     */
+    public function importKnowledgeCategoriesInternal(iterable $rows, bool $retry = false): iterable {
+        $added = $updated = $skipped = $failures = 0;
         foreach ($rows as $row) {
             if (($row['skip'] ?? '') === 'true') {
                 continue;
             }
+
             if (($row['rootCategory'] ?? 'false') === 'true') {
                 $result = $this->vanillaApi->get("/api/v2/knowledge-bases/".rawurlencode($row['knowledgeBaseID']));
                 $kb = $result->getBody();
-                $kbCat = $this->vanillaApi->patch('/api/v2/knowledge-categories/'.$kb['rootCategoryID'].'/root', ['foreignID' => $row["foreignID"]]);
+                $kbCat = $this->vanillaApi->patch('/api/v2/knowledge-categories/'.$kb['rootCategoryID'].'/root', ['foreignID' => $row["foreignID"]])->getBody();
+                $updated++;
             } else {
                 if (($row['parentID'] ?? '') === 'null') {
-                    $result = $this->vanillaApi->get("/api/v2/knowledge-bases/".rawurlencode($row['knowledgeBaseID']));
-                    $kb = $result->getBody();
-                    $row['parentID'] = $kb['rootCategoryID'];
+                    try {
+                        $result = $this->vanillaApi->get("/api/v2/knowledge-bases/".rawurlencode($row['knowledgeBaseID']));
+                        $kb = $result->getBody();
+                        $row['parentID'] = $kb['rootCategoryID'];
+                    } catch (HttpResponseException $exception) {
+                        $row['failed'] = true;
+                        self::$kbcats[] = $row;
+                        $failures++;
+                        continue;
+                    }
                 };
                 try {
                     $existing = $this->vanillaApi->getKnowledgeCategoryBySmartID($row["foreignID"]);
                     $patch = $this->updateFields($existing, $row, self::KB_CATEGORY_EDIT_FIELDS);
+                    $updated++;
                     if (!empty($patch)) {
                         $kbCat = $this->vanillaApi->patch(
                             '/api/v2/knowledge-categories/' . $existing['knowledgeCategoryID'],
                             $patch
-                        );
+                        )->getBody();
                     }
-                } catch (NotFoundException $ex) {
-                    $kbCat = $this->vanillaApi->post('/api/v2/knowledge-categories', $row);
+                } catch (NotFoundException | HttpResponseException $ex) {
+                    if ($ex->getCode() === 500) {
+                        $row['failed'] = true;
+                        self::$kbcats[] = $row;
+                        $failures++;
+                        continue;
+                    } else {
+                        $kbCat = $this->vanillaApi->post('/api/v2/knowledge-categories', $row)->getBody();
+                        $added++;
+                    }
                 }
             }
             yield $kbCat ?? $existing;
+        }
+        if (!$retry) {
+            $this->logger->end(
+                "Done (added: {added}, updated: {updated}, skipped: {skipped}, failed: {failures})",
+                ['added' => $added, 'updated' => $updated, 'skipped' => $skipped, 'failures' => $failures]
+            );
+        }
+    }
+    /**
+     * Try to reprocess failed knowledge categories that failed to import.
+     *
+     * @return iterable
+     */
+    public function processFailedImportedKnowledgeCategories(): iterable {
+        $initialCount = count(self::$kbcats);
+        if ($initialCount > 0) {
+            $retryLimit = $this->config['retryLimit'] ?? 1;
+            $count = $initialCount;
+            for ($i = 0; $i <= $retryLimit; $i++) {
+                $retry = false;
+                $this->logger->beginInfo("Retry importing knowledge categories");
+                $originalFailedKBCategories = new \ArrayObject(self::$kbcats);
+                self::$kbcats = [];
+                $kbCategories = $this->importKnowledgeCategoriesInternal($originalFailedKBCategories, true);
+                foreach ($kbCategories as $kbCategory) {
+                    $count--;
+                    yield $kbCategory;
+                }
+
+                if ($count === 0) {
+                    $retry = false;
+                } elseif ($count < $initialCount) {
+                    $retry = true;
+                } elseif ($count === $initialCount) {
+                    $retry = false;
+                }
+
+                if (!$retry && (count(self::$kbcats) > 0)) {
+                    $this->logger->info('Error importing to ' . count(self::$kbcats) . ' categories');
+                    die();
+                }
+
+                $this->logger->end("Done(successful:{successful}, failed:{failed})",
+                    [
+                        'successful' => ($initialCount - self::$count),
+                        "failed" => count(self::$kbcats)
+                    ]
+                );
+            }
         }
     }
 
@@ -386,8 +477,11 @@ class VanillaDestination extends AbstractDestination {
                         "default" => true,
                     ],
                 ],
-
-            ]
+            ],
+            "retryLimit:i?" => [
+                "description" => "Limit for retries",
+                "default" => 1
+            ],
         ]);
     }
 }
