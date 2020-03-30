@@ -185,7 +185,18 @@ class ZendeskSource extends AbstractSource {
         $locale = $this->config['sourceLocale'] ?? self::DEFAULT_SOURCE_LOCALE;
 
         for ($page = $pageFrom; $page <= $pageTo; $page++) {
-            $articles = $this->zendesk->getArticles($locale, ['page' => $page, 'per_page' => $pageLimit]);
+            $queryParams = ['page' => $page, 'per_page' => $pageLimit];
+
+            $syncFrom = $this->config['syncFrom'] ?? null;
+            $syncFrom = strtotime($syncFrom);
+            $currentTime = time();
+
+            $syncFrom = ($syncFrom >= $currentTime) ? false : $syncFrom;
+            if ($syncFrom) {
+              $queryParams['start_time'] = $syncFrom;
+            }
+
+            $articles = $this->zendesk->getArticles($locale, $queryParams);
             if (empty($articles)) {
                 break;
             }
@@ -344,7 +355,7 @@ class ZendeskSource extends AbstractSource {
      * @param string $body
      * @return string
      */
-    protected function parseUrls(string $body): string {
+    protected function parseUrls(string $body = ''): string {
         $sourceDomain = $this->config['domain'] ?? null;
         $targetDomain = $this->config['targetDomain'] ?? null;
         $prefix = $this->config['foreignIDPrefix'] ?? null;
@@ -500,6 +511,11 @@ HTML;
                 "default" => 100,
                 "minimum" => 1,
                 "maximum" => 1000,
+            ],
+            "syncFrom:s?" => [
+                "description" => "Days or Date from which to start import or sync",
+                "allowNull" => true,
+                "minLength" => 5
             ],
             "import:o?" => [
                 "description" => "Import by content type: categories, sections, articles.",

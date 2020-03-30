@@ -121,11 +121,22 @@ class ZendeskClient extends HttpClient {
      * @return array
      */
     public function getArticles(string $locale, array $query = []): iterable {
+        $uri = "/api/v2/help_center/$locale/articles.json";
+
+        if ($query['start_time'] ?? false) {
+            $uri = "/api/v2/help_center/incremental/articles.json";
+        }
+
         $queryParams = empty($query) ? '' : '?'.http_build_query($query);
-        $results = $this->get("/api/v2/help_center/$locale/articles.json".$queryParams)->getBody();
+        $results = $this->get($uri.$queryParams)->getBody();
 
         foreach ($results['articles'] as &$article) {
+            if (($article['locale'] ?? null) !== $locale) {
+                // ensure that articles are created in the source-locale first.
+                $article['locale'] = $locale;
+            }
             $article['format'] = 'wysiwyg';
+            $article['body'] = $article['body'] ?? 'content-place-holder';
         }
         return $results['articles'] ?? [];
     }
