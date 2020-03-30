@@ -192,8 +192,8 @@ class ZendeskSource extends AbstractSource {
             $syncFrom = $this->config['syncFrom'] ?? null;
             $syncFrom = strtotime($syncFrom);
             $currentTime = time();
-            
-            $syncFrom = ($syncFrom >= $currentTime) ? null : $syncFrom;
+
+            $syncFrom = ($syncFrom >= $currentTime) ? false : $syncFrom;
             if ($syncFrom) {
               $queryParams['start_time'] = $syncFrom;
             }
