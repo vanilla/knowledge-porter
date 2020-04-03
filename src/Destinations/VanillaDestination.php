@@ -88,9 +88,11 @@ class VanillaDestination extends AbstractDestination {
             }
             try {
                 $existing = $this->vanillaApi->getKnowledgeBaseBySmartID($row["foreignID"]);
-                $patch = $this->updateFields($existing, $row, self::KB_EDIT_FIELDS);
-                if (!empty($patch)) {
-                    $kb = $this->vanillaApi->patch('/api/v2/knowledge-bases/' . $existing['knowledgeBaseID'], $patch)->getBody();
+                if ($this->config['patchKnowledgeBase'] ?? false) {
+                    $patch = $this->updateFields($existing, $row, self::KB_EDIT_FIELDS);
+                    if (!empty($patch)) {
+                        $kb = $this->vanillaApi->patch('/api/v2/knowledge-bases/' . $existing['knowledgeBaseID'], $patch)->getBody();
+                    }
                 }
             } catch (NotFoundException $ex) {
                 $kb = $this->vanillaApi->post('/api/v2/knowledge-bases', $row)->getBody();
@@ -481,6 +483,10 @@ class VanillaDestination extends AbstractDestination {
             "retryLimit:i?" => [
                 "description" => "Limit for retries",
                 "default" => 1
+            ],
+            "patchKnowledgeBase:b?" => [
+                "description" => "Patch knowledge base if it exists already.",
+                "default" => false
             ],
         ]);
     }
