@@ -210,6 +210,7 @@ class ZendeskSource extends AbstractSource {
                 'alias' => ['column' => 'id', 'filter' => [$this, 'setAlias']],
                 'skip' => ['columns' => ['draft', 'user_segment_id'], 'filter' => [$this, 'setSkipStatus']],
                 'dateUpdated' => 'updated_at',
+                'dateInserted' => 'created_at',
             ]);
             $dest = $this->getDestination();
             $kbArticles = $dest->importKnowledgeArticles($knowledgeArticles);
@@ -227,6 +228,7 @@ class ZendeskSource extends AbstractSource {
                         'body' => ['column' => 'body', 'filter' => [$this, 'parseUrls']],
                         'skip' => ['columns' => ['draft', 'user_segment_id'], 'filter' => [$this, 'setSkipStatus']],
                         'dateUpdated' => 'updated_at',
+                        'dateInserted' => 'created_at',
                     ]);
                     $dest->importArticleTranslations($kbTranslations);
                 }
@@ -581,7 +583,7 @@ HTML;
 
     /**
      * Translations for Knowledge Categories.
-     * 
+     *
      * @param iterable $knowledgeCategories
      * @param bool $translate
      */
