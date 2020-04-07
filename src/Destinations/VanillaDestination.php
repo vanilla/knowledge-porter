@@ -88,9 +88,11 @@ class VanillaDestination extends AbstractDestination {
             }
             try {
                 $existing = $this->vanillaApi->getKnowledgeBaseBySmartID($row["foreignID"]);
-                $patch = $this->updateFields($existing, $row, self::KB_EDIT_FIELDS);
-                if (!empty($patch)) {
-                    $kb = $this->vanillaApi->patch('/api/v2/knowledge-bases/' . $existing['knowledgeBaseID'], $patch)->getBody();
+                if ($this->config['patchKnowledgeBase'] ?? false) {
+                    $patch = $this->updateFields($existing, $row, self::KB_EDIT_FIELDS);
+                    if (!empty($patch)) {
+                        $kb = $this->vanillaApi->patch('/api/v2/knowledge-bases/' . $existing['knowledgeBaseID'], $patch)->getBody();
+                    }
                 }
             } catch (NotFoundException $ex) {
                 $kb = $this->vanillaApi->post('/api/v2/knowledge-bases', $row)->getBody();
@@ -284,11 +286,20 @@ class VanillaDestination extends AbstractDestination {
      * @return array Returns an array in the format: `['added' => int, 'updated' => int, 'skipped' => int]`.
      */
     private function importKnowledgeArticlesInternal(iterable $rows): iterable {
-        $added = $updated = $skipped = 0;
+        $added = $updated = $skipped = $deleted = $undeleted = 0;
 
         foreach ($rows as $row) {
             if (($row['skip'] ?? '') === 'true') {
-                $skipped++;
+                try {
+                    $existingArticle = $this->vanillaApi->getKnowledgeArticleBySmartID($row["foreignID"]);
+                    $article = $this->vanillaApi->patch(
+                        '/api/v2/articles/' . $existingArticle['articleID'] . '/status',
+                        ['status' => 'deleted']
+                    )->getBody();
+                    $deleted++;
+                } catch (NotFoundException $ex) {
+                    $skipped++;
+                }
                 continue;
             }
 
@@ -307,6 +318,13 @@ class VanillaDestination extends AbstractDestination {
                 try {
                     // This should probably grab from the edit endpoint because that's what you'll be comparing to.
                     $existingArticle = $this->vanillaApi->getKnowledgeArticleBySmartID($row["foreignID"]);
+                    if ($existingArticle['status'] === 'deleted') {
+                        $this->vanillaApi->patch(
+                            '/api/v2/articles/' . $existingArticle['articleID'] . '/status',
+                            ['status' => "published"]
+                        );
+                        $undeleted++;
+                    }
                     $patch = $this->updateFields($existingArticle, $row, self::ARTICLE_EDIT_FIELDS);
                     if (!empty($patch)) {
                         $article = $this->vanillaApi->patch('/api/v2/articles/' . $existingArticle['articleID'], $patch)->getBody();
@@ -323,8 +341,8 @@ class VanillaDestination extends AbstractDestination {
             yield $article ?? $existingArticle;
         }
         $this->logger->end(
-            "Done (added: {added}, updated: {updated}, skipped: {skipped})",
-            ['added' => $added, 'updated' => $updated, 'skipped' => $skipped]
+            "Done (added: {added}, updated: {updated}, skipped: {skipped}, deleted: {deleted}, undeleted: {undeleted})",
+            ['added' => $added, 'updated' => $updated, 'skipped' => $skipped, 'deleted' => $deleted, 'undeleted' => $undeleted]
         );
     }
 
@@ -481,6 +499,10 @@ class VanillaDestination extends AbstractDestination {
             "retryLimit:i?" => [
                 "description" => "Limit for retries",
                 "default" => 1
+            ],
+            "patchKnowledgeBase:b?" => [
+                "description" => "Patch knowledge base if it exists already.",
+                "default" => false
             ],
         ]);
     }
