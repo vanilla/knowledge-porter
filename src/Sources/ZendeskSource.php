@@ -193,7 +193,7 @@ class ZendeskSource extends AbstractSource {
 
             $syncFrom = ($syncFrom >= $currentTime) ? false : $syncFrom;
             if ($syncFrom) {
-              $queryParams['start_time'] = $syncFrom;
+                $queryParams['start_time'] = $syncFrom;
             }
 
             $articles = $this->zendesk->getArticles($locale, $queryParams);
@@ -581,7 +581,7 @@ HTML;
 
     /**
      * Translations for Knowledge Categories.
-     * 
+     *
      * @param iterable $knowledgeCategories
      * @param bool $translate
      */
