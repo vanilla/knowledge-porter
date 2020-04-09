@@ -100,6 +100,31 @@ class ZendeskClient extends HttpClient {
     }
 
     /**
+     * Execute GET /users/{id}.json request against zendesk api.
+     *
+     * @param string|int $userID
+     * @return array
+     */
+    public function getUser($userID): array {
+        $results = $this->get('/api/v2/users/'.$userID.'.json')->getBody();
+        $zendeskUser = $results['user'] ?? [];
+        return $zendeskUser;
+    }
+
+    /**
+     * Execute GET /help_center/{locale}/articles/{id}/votes.json request against zendesk api.
+     *
+     * @param string|int $articleID
+     *  @param string $locale
+     * @return array
+     */
+    public function getArticleVotes($articleID, string $locale): iterable {
+        $results = $this->get('/api/v2/help_center/'.$locale.'/articles/'.$articleID.'/votes.json')->getBody();
+        $zendeskArticleVotes = $results['votes'] ?? null;
+        return $zendeskArticleVotes;
+    }
+
+    /**
      * Execute GET /help_center/$locale/sections.json request against zendesk api.
      *
      * @param string $locale

@@ -137,10 +137,55 @@ class VanillaDestination extends AbstractDestination {
                 // $row contains all fields needed for translation api
                 // $patch has only 'translation' field if
                 // we use $patch as trigger, but $row as a body for translation
+                $user = $this->getOrCreateUser($row['userData']);
+                $row['updateUserID'] = $user['userID'];
+                unset($row['userData']);
                 $row['validateLocale'] = false;
                 $res = $this->vanillaApi->patch('/api/v2/articles/'.$row['articleID'], $row);
             }
         }
+    }
+
+    /**
+     * @param iterable $rows
+     */
+    public function importArticleVotes(iterable $rows) {
+        foreach ($rows as $row) {
+            if (empty($row['userData'])) {
+                $row['insertUserID'] = -1;
+            } else {
+                $user = $this->getOrCreateUser($row['userData']);
+                $row['insertUserID'] = $user['userID'];
+                unset($row['userData']);
+            }
+
+            try {
+                $res = $this->vanillaApi->put('/api/v2/articles/'.$row['articleID'].'/react', $row);
+            } catch (HttpResponseException $ex) {
+                $this->logger->info($ex->getMessage());
+            }
+        }
+    }
+
+    /**
+     * @param array $userData
+     * @return array
+     */
+    private function getOrCreateUser(array $userData): array {
+        try {
+            $user = $this->vanillaApi->get('/api/v2/users/$email:'.$userData['email'])->getBody();
+        } catch (NotFoundException $ex) {
+            if (!$this->config['syncUserByEmailOnly']) {
+                try {
+                    $user = $this->vanillaApi->get('/api/v2/users/$name:' . $userData['name'])->getBody();
+                } catch (NotFoundException $ex) {
+                    $user = $this->vanillaApi->post('/api/v2/users/', $userData)->getBody();
+                }
+            } else {
+                $user = $this->vanillaApi->post('/api/v2/users/', $userData)->getBody();
+            }
+        }
+        return $user;
     }
 
     /**
@@ -316,6 +361,7 @@ class VanillaDestination extends AbstractDestination {
                 $alias = $row["alias"] ?? null;
                 unset($row['alias']);
                 try {
+                    $user = $this->getOrCreateUser($row['userData']);
                     // This should probably grab from the edit endpoint because that's what you'll be comparing to.
                     $existingArticle = $this->vanillaApi->getKnowledgeArticleBySmartID($row["foreignID"]);
                     if ($existingArticle['status'] === 'deleted') {
@@ -327,12 +373,15 @@ class VanillaDestination extends AbstractDestination {
                     }
                     $patch = $this->updateFields($existingArticle, $row, self::ARTICLE_EDIT_FIELDS);
                     if (!empty($patch)) {
+                        $patch['updateUserID'] = $user['userID'];
                         $article = $this->vanillaApi->patch('/api/v2/articles/' . $existingArticle['articleID'], $patch)->getBody();
                         $updated++;
                     } else {
                         $skipped++;
                     }
                 } catch (NotFoundException $ex) {
+                    $user = $this->getOrCreateUser($row['userData']);
+                    $row['insertUserID'] = $row['updateUserID'] = $user['userID'];
                     $article = $this->vanillaApi->post('/api/v2/articles', $row)->getBody();
                     $this->vanillaApi->put('/api/v2/articles/' . $article['articleID'] . '/aliases', ["aliases" => [$alias]]);
                     $added++;
@@ -502,6 +551,10 @@ class VanillaDestination extends AbstractDestination {
             ],
             "patchKnowledgeBase:b?" => [
                 "description" => "Patch knowledge base if it exists already.",
+                "default" => false
+            ],
+            "syncUserByEmailOnly:b?" => [
+                "description" => "Sync user by email only mode. When `false` allows 2nd lookup by username.",
                 "default" => false
             ],
         ]);
