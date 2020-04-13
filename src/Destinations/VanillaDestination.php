@@ -450,7 +450,7 @@ class VanillaDestination extends AbstractDestination {
                 if ($existing[self::DATE_UPDATED] ?? 0) {
                     $existingDate = strtotime($existing[self::DATE_UPDATED]);
                     $newDate = strtotime($new[self::DATE_UPDATED]);
-                    $res = ($existingDate < $newDate) ? $new : $res;
+                    $res = ($existingDate < $newDate) ? $new : [];
                 }
                 break;
         }
