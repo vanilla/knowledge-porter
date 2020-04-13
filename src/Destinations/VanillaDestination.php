@@ -447,8 +447,10 @@ class VanillaDestination extends AbstractDestination {
                 $res = $this->compareFields($existing, $new, $extra);
                 break;
             case self::UPDATE_MODE_ON_DATE:
-                if (($existing[self::DATE_UPDATED] ?? 0) < $new[self::DATE_UPDATED]) {
-                    $res = $new;
+                if ($existing[self::DATE_UPDATED] ?? 0) {
+                    $existingDate = strtotime($existing[self::DATE_UPDATED]);
+                    $newDate = strtotime($new[self::DATE_UPDATED]);
+                    $res = ($existingDate < $newDate) ? $new : $res;
                 }
                 break;
         }
