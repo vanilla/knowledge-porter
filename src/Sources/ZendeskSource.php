@@ -202,6 +202,7 @@ class ZendeskSource extends AbstractSource {
             }
             $knowledgeArticles = $this->transform($articles, [
                 'foreignID' => ["column" => 'id', "filter" => [$this, "addPrefix"]],
+                'userData' => ['column' => 'author_id', 'filter' => [$this, 'getUserData']],
                 'knowledgeCategoryID' => ["column" => 'section_id', "filter" => [$this, "addPrefix"]],
                 'format' => 'format',
                 'locale' => ['column' => 'locale', 'filter' => [$this, 'getSourceLocale']],
@@ -229,8 +230,20 @@ class ZendeskSource extends AbstractSource {
                         'skip' => ['columns' => ['draft', 'user_segment_id'], 'filter' => [$this, 'setSkipStatus']],
                         'dateUpdated' => 'updated_at',
                         'dateInserted' => 'created_at',
+                        'userData' => ['columns' => ['updated_by_id', 'created_by_id'], 'filter' => [$this, 'getUserUpdatedData']],
                     ]);
                     $dest->importArticleTranslations($kbTranslations);
+                }
+                if ($this->config['import']['helpful'] ?? true) {
+                    /** @var iterable $votes */
+                    $votes = $this->zendesk->getArticleVotes($this->trimPrefix($kbArticle['foreignID']), $locale);
+                    $kbVotes = $this->transform($votes, [
+                        'userData' => ['column' => 'user_id', 'filter' => [$this, 'getUserData']],
+                        'foreignID' => ['column' => 'id', 'filter' => [$this, 'addPrefix']],
+                        'helpful' => ['column' => 'value', 'filter' => [$this, 'getHelpful']],
+                        'articleID' => ["placeholder" => $kbArticle['articleID']],
+                    ]);
+                    $dest->importArticleVotes($kbVotes);
                 }
             }
         }
@@ -246,6 +259,49 @@ class ZendeskSource extends AbstractSource {
     protected function knowledgeBaseSmartId($str): string {
         $newStr = '$foreignID:'.$this->config["foreignIDPrefix"].$str;
         return $newStr;
+    }
+
+    /**
+     * @param $str
+     * @return string
+     */
+    protected function getHelpful($str): string {
+        $newStr = ($str == 1) ? 'yes' : 'no';
+        return $newStr;
+    }
+
+    /**
+     * @param $userID
+     * @return array
+     */
+    protected function getUserData($userID): array {
+        $data = [];
+        if (!empty($userID)) {
+            $data = $this->zendesk->getUser($userID);
+            $data['password'] = $this->config["foreignIDPrefix"].$data['name'];
+            $data['emailConfirmed'] = true;
+            $data['bypassSpam'] = true;
+        }
+        return $data;
+    }
+
+    /**
+     * @param array $userFieldNames
+     * @return array
+     */
+    protected function getUserUpdatedData(array $userFieldNames, array $row): array {
+        $data = [];
+        foreach ($userFieldNames as $userField) {
+            $userID = $row[$userField];
+            if (!empty($userID)) {
+                $data = $this->zendesk->getUser($userID);
+                $data['password'] = $this->config["foreignIDPrefix"] . $data['name'];
+                $data['emailConfirmed'] = true;
+                $data['bypassSpam'] = true;
+                break;
+            }
+        }
+        return $data;
     }
 
     /**
@@ -541,7 +597,11 @@ HTML;
                     "retrySections" => [
                         "type" => "boolean",
                         "default" => false,
-                    ]
+                    ],
+                    "helpful" => [
+                        "type" => "boolean",
+                        "default" => false,
+                    ],
                 ],
             ],
             "api:o?" => [
