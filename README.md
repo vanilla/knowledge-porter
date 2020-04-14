@@ -24,7 +24,9 @@ Example:
         "import": {
             "categories": true,
             "sections": true,
-            "articles": true
+            "articles": true,
+            "translations": true,
+            "helpful": true
         },
         "api": {
             "cache": true,
@@ -41,9 +43,21 @@ Example:
             "cache": false,
             "log": true
         }
+        // by default we don't want KB to be patched after 1st sync 
+        // that will allow to avoid kb-url-slug update if edited on vanilla side
+        "patchKnowledgeBase": false, 
+        "syncUserByEmailOnly": false
     }
 }
 ```
+
+### Users and Authors
+
+When porter import articles it is searching for existing user by `email` and uses it if found.
+
+If user is not found by email porter checks configuration feature flag `syncUserByEmailOnly` and if that flag is false (dafault) search user by `name`.
+
+If user still can not be found porter will create new user.
 
 ### Imoprt from multiple domains
 
