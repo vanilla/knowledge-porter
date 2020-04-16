@@ -51,6 +51,18 @@ Example:
 }
 ```
 
+Alternatively, you can set the porter configuration into an environmental variable and tell the porter to use the variable instead of the configuration file.
+
+Example, assuming your configuration is set on the variable CONFIG:
+```
+./bin/knowledge-porter import --config="ENV:CONFIG"
+```
+Note: The environmental variable must contain a valid JSON configuration in the same way that a file configuration should be.
+
+### Rate Limit Bypass for Vanilla's Infrastructure
+
+If the destination is type `vanilla`, you might want to use the `rate_limit_bypass_token` (optional) configuration parameter to set your rate limit bypass token.
+
 ### Users and Authors
 
 When porter import articles it is searching for existing user by `email` and uses it if found.
@@ -59,7 +71,7 @@ If user is not found by email porter checks configuration feature flag `syncUser
 
 If user still can not be found porter will create new user.
 
-### Imoprt from multiple domains
+### Import from multiple domains
 
 In case we need to import data from different domains and they all could be reached using same api credentials/token
 there is another tool `mulit-import.sh`.
