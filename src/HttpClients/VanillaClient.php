@@ -42,6 +42,7 @@ class VanillaClient extends HttpClient {
         $this->token = $token;
         $this->setDefaultHeader('Authorization', "Bearer $token");
     }
+
     /**
      * Execute GET /api/v2/knowledge-bases request against vanilla api.
      *
@@ -136,6 +137,7 @@ class VanillaClient extends HttpClient {
      * @param HttpResponse $response
      * @param array $options
      * @throws NotFoundException Throw not found exception when 404 status received.
+     * @throws HttpResponseException On error
      */
     public function handleErrorResponse(HttpResponse $response, $options = []) {
         if ($response->getStatusCode() === 404 && ($options['throw'] ?? $this->throwExceptions)) {
