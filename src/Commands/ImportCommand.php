@@ -13,10 +13,11 @@ use Vanilla\KnowledgePorter\Destinations\AbstractDestination;
 use Vanilla\KnowledgePorter\Destinations\VanillaDestination;
 use Vanilla\KnowledgePorter\Main;
 use Vanilla\KnowledgePorter\Sources\AbstractSource;
-use Garden\Schema\Schema;
+use Exception;
 
 /**
  * Class ImportCommand
+ *
  * @package Vanilla\KnowledgePorter\Commands
  */
 class ImportCommand extends AbstractCommand {
@@ -45,33 +46,50 @@ class ImportCommand extends AbstractCommand {
 
     /**
      * @inheritdoc
+     * @throws Exception
      */
     public function run(): void {
         $this->parseArgs();
-
         $source = $this->createSource();
-        $this->logger->info("Running import command from {source} to {destination}.", [
-            'source' => get_class($source),
-            'destination' => get_class($source->getDestination()),
+
+        $this->logger->info("Source: {domain} [`{type}`]", [
+            'type' => get_class($source),
+            'domain' => $this->config['source']['domain'],
+        ]);
+
+        $this->logger->info("Target: {domain} [`{type}`]", [
+            'type' => get_class($source->getDestination()),
+            'domain' => $this->config['destination']['domain'],
         ]);
 
         $source->import();
     }
 
     /**
-     * @throws \Exception When configuration not found or wrong format.
+     * @throws Exception When configuration not found or wrong format.
      */
     private function parseArgs() {
-        $configPath = $this->args->getOpt('config');
-        if (!file_exists($configPath)) {
-            throw new \Exception("Config file not found: $configPath", 404);
-        }
+        // Configuration can be a configuration file or a reference to an Environmental Variable
+        $configArg = $this->args->getOpt('config');
 
-        $config = json_decode(file_get_contents($configPath), true);
-        if (!is_array($config) || isset($config[0])) {
-            throw new \Exception("The config file is not a valid JSON object.", 400);
+        if (strpos($configArg, 'ENV:') === 0) {
+            $this->logger->info("Getting configuration from Environmental Variable");
+            $tokens = explode(":", $configArg);
+            if (count($tokens) !== 2) {
+                throw new Exception("Malformed configuration from Environmental Variable. Use `ENV:VAR_NAME`", 1);
+            }
+            $this->config = json_decode(trim(getenv($tokens[1])), true);
+        } else {
+            $this->logger->info("Getting configuration from File");
+            if (!file_exists($configArg)) {
+                throw new Exception("File not found: `$configArg``", 1);
+            }
+
+            $this->config = json_decode(file_get_contents($configArg), true);
         }
-        $this->config = $config;
+        if (!is_array($this->config) || empty($this->config)) {
+            throw new Exception("The configuration is not a valid JSON object.", 1);
+        }
     }
 
     /**
@@ -98,6 +116,7 @@ class ImportCommand extends AbstractCommand {
         $source->setDestination($dest);
         $sourceConfig['targetDomain'] = $sourceConfig['targetDomain'] ?? $this->config['destination']['domain'];
         $source->setConfig($sourceConfig);
+
         return $source;
     }
 }
