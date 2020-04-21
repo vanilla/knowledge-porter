@@ -137,9 +137,11 @@ class VanillaDestination extends AbstractDestination {
                 // $row contains all fields needed for translation api
                 // $patch has only 'translation' field if
                 // we use $patch as trigger, but $row as a body for translation
-                $user = $this->getOrCreateUser($row['userData']);
-                $row['updateUserID'] = $user['userID'];
-                unset($row['userData']);
+                if (!empty($row['userData'])) {
+                    $user = $this->getOrCreateUser($row['userData']);
+                    $row['updateUserID'] = $user['userID'];
+                    unset($row['userData']);
+                }
                 $row['validateLocale'] = false;
                 $res = $this->vanillaApi->patch('/api/v2/articles/'.$row['articleID'], $row);
             }
@@ -361,7 +363,7 @@ class VanillaDestination extends AbstractDestination {
                 $alias = $row["alias"] ?? null;
                 unset($row['alias']);
                 try {
-                    $user = $this->getOrCreateUser($row['userData']);
+                    $user = empty($row['userData']) ? [] : $this->getOrCreateUser($row['userData']);
                     // This should probably grab from the edit endpoint because that's what you'll be comparing to.
                     $existingArticle = $this->vanillaApi->getKnowledgeArticleBySmartID($row["foreignID"]);
                     if ($existingArticle['status'] === 'deleted') {
@@ -373,15 +375,20 @@ class VanillaDestination extends AbstractDestination {
                     }
                     $patch = $this->updateFields($existingArticle, $row, self::ARTICLE_EDIT_FIELDS);
                     if (!empty($patch)) {
-                        $patch['updateUserID'] = $user['userID'];
+                        if (!empty($user)) {
+                            $patch['updateUserID'] = $user['userID'];
+                        }
                         $article = $this->vanillaApi->patch('/api/v2/articles/' . $existingArticle['articleID'], $patch)->getBody();
                         $updated++;
                     } else {
                         $skipped++;
                     }
                 } catch (NotFoundException $ex) {
-                    $user = $this->getOrCreateUser($row['userData']);
-                    $row['insertUserID'] = $row['updateUserID'] = $user['userID'];
+                    if (!empty($row['userData'])) {
+                        $user = $this->getOrCreateUser($row['userData']);
+                        $row['updateUserID'] = $user['userID'];
+                        $row['insertUserID'] = $user['userID'];
+                    }
                     $article = $this->vanillaApi->post('/api/v2/articles', $row)->getBody();
                     $this->vanillaApi->put('/api/v2/articles/' . $article['articleID'] . '/aliases', ["aliases" => [$alias]]);
                     $added++;

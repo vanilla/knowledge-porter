@@ -276,11 +276,13 @@ class ZendeskSource extends AbstractSource {
      */
     protected function getUserData($userID): array {
         $data = [];
-        if (!empty($userID)) {
-            $data = $this->zendesk->getUser($userID);
-            $data['password'] = $this->config["foreignIDPrefix"].$data['name'];
-            $data['emailConfirmed'] = true;
-            $data['bypassSpam'] = true;
+        if ($this->config['import']['authors'] ?? false) {
+            if (!empty($userID)) {
+                $data = $this->zendesk->getUser($userID);
+                $data['password'] = $this->config["foreignIDPrefix"] . $data['name'];
+                $data['emailConfirmed'] = true;
+                $data['bypassSpam'] = true;
+            }
         }
         return $data;
     }
@@ -291,14 +293,16 @@ class ZendeskSource extends AbstractSource {
      */
     protected function getUserUpdatedData(array $userFieldNames, array $row): array {
         $data = [];
-        foreach ($userFieldNames as $userField) {
-            $userID = $row[$userField];
-            if (!empty($userID)) {
-                $data = $this->zendesk->getUser($userID);
-                $data['password'] = $this->config["foreignIDPrefix"] . $data['name'];
-                $data['emailConfirmed'] = true;
-                $data['bypassSpam'] = true;
-                break;
+        if ($this->config['import']['authors'] ?? false) {
+            foreach ($userFieldNames as $userField) {
+                $userID = $row[$userField];
+                if (!empty($userID)) {
+                    $data = $this->zendesk->getUser($userID);
+                    $data['password'] = $this->config["foreignIDPrefix"] . $data['name'];
+                    $data['emailConfirmed'] = true;
+                    $data['bypassSpam'] = true;
+                    break;
+                }
             }
         }
         return $data;
@@ -583,6 +587,10 @@ HTML;
                         "default" => true,
                     ],
                     "sections" => [
+                        "type" => "boolean",
+                        "default" => true,
+                    ],
+                    "authors" => [
                         "type" => "boolean",
                         "default" => true,
                     ],
