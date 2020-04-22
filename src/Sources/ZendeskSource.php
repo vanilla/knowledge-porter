@@ -208,6 +208,7 @@ class ZendeskSource extends AbstractSource {
                 'locale' => ['column' => 'locale', 'filter' => [$this, 'getSourceLocale']],
                 'name' => 'name',
                 'body' => ['column' => 'body', 'filter' => [$this, 'parseUrls']],
+                'featured' => ['column' => 'promoted'],
                 'alias' => ['column' => 'id', 'filter' => [$this, 'setAlias']],
                 'skip' => ['columns' => ['draft', 'user_segment_id'], 'filter' => [$this, 'setSkipStatus']],
                 'dateUpdated' => 'updated_at',
