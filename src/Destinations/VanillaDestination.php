@@ -33,6 +33,7 @@ class VanillaDestination extends AbstractDestination {
         ['knowledgeCategoryID', 'resolveKnowledgeCategoryID'],
         'name',
         'body',
+        'featured',
     ];
 
     const KB_EDIT_FIELDS = [
@@ -372,6 +373,7 @@ class VanillaDestination extends AbstractDestination {
                 $row['knowledgeCategoryID'] = $existingCategory['knowledgeCategoryID'] ?? null;
                 $alias = $row["alias"] ?? null;
                 unset($row['alias']);
+
                 try {
                     $user = empty($row['userData']) ? [] : $this->getOrCreateUser($row['userData']);
                     // This should probably grab from the edit endpoint because that's what you'll be comparing to.
@@ -381,6 +383,10 @@ class VanillaDestination extends AbstractDestination {
                             '/api/v2/articles/'.$existingArticle['articleID'].'/status',
                             ['status' => "published"]
                         );
+                        if (isset($row['featured'])) {
+                            $this->putFeaturedArticle($existingArticle['articleID'], $row['featured']);
+                        }
+
                         $undeleted++;
                     }
                     $patch = $this->updateFields($existingArticle, $row, self::ARTICLE_EDIT_FIELDS);
@@ -389,6 +395,9 @@ class VanillaDestination extends AbstractDestination {
                             $patch['updateUserID'] = $user['userID'];
                         }
                         $article = $this->vanillaApi->patch('/api/v2/articles/' . $existingArticle['articleID'], $patch)->getBody();
+                        if (isset($row['featured'])) {
+                            $this->putFeaturedArticle($existingArticle['articleID'], $row['featured']);
+                        }
                         $updated++;
                     } else {
                         $skipped++;
@@ -400,7 +409,10 @@ class VanillaDestination extends AbstractDestination {
                         $row['insertUserID'] = $user['userID'];
                     }
                     $article = $this->vanillaApi->post('/api/v2/articles', $row)->getBody();
-                    $this->vanillaApi->put('/api/v2/articles/'.$article['articleID'].'/aliases', ["aliases" => [$alias]]);
+                    $this->vanillaApi->put('/api/v2/articles/' . $article['articleID'] . '/aliases', ["aliases" => [$alias]]);
+                    if (isset($row['featured']) && $row['featured']) {
+                        $this->putFeaturedArticle($article['articleID'], $row['featured']);
+                    }
                     $added++;
                 }
             }
@@ -446,6 +458,16 @@ class VanillaDestination extends AbstractDestination {
         $kb = $this->vanillaApi->get("/api/v2/knowledge-categories/".rawurlencode($smartID));
 
         return $kb["knowledgeCategoryID"];
+    }
+
+    /**
+     * Put a featured article.
+     *
+     * @param int $id
+     * @param bool $featured
+     */
+    public function putFeaturedArticle(int $id, bool $featured) {
+        $this->vanillaApi->put('/api/v2/articles/' . $id . '/featured', ["featured" => $featured]);
     }
 
     /**
