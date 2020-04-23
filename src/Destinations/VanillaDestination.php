@@ -578,7 +578,7 @@ class VanillaDestination extends AbstractDestination {
             "token:s" => [
                 "description" => "Vanilla api Bearer token. Ex: 8piiaCXA2ts",
             ],
-            "rate_limit_bypass_token:s" => [
+            "rate_limit_bypass_token:s?" => [
                 "description" => "Vanilla Cloud rate limiting bypass token. Ex: fgc60lt90412yOUMJ8gRC1VXxmE0k",
             ],
             "update:s?" => [
