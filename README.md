@@ -26,6 +26,7 @@ Example:
             "sections": true,
             "articles": true,
             "translations": true,
+            "attachments": true,
             "helpful": true
         },
         "api": {
