@@ -100,6 +100,18 @@ class ZendeskClient extends HttpClient {
     }
 
     /**
+     * Execute GET /help_center/articles/{id}/attachments.json request against zendesk api.
+     *
+     * @param string|int $articleID
+     * @return array
+     */
+    public function getArticleAttachments($articleID): iterable {
+        $results = $this->get('/api/v2/help_center/articles/'.$articleID.'/attachments.json')->getBody();
+        $zendeskArticleAttachments = $results['article_attachments'] ?? null;
+        return $zendeskArticleAttachments;
+    }
+
+    /**
      * Execute GET /users/{id}.json request against zendesk api.
      *
      * @param string|int $userID
