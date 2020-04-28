@@ -87,6 +87,8 @@ class ImportCommand extends AbstractCommand {
         /** @var AbstractDestination $dest */
         $dest = $this->container->get($destClass);
 
+        $dest->setRehostHeaders($source->getFileRehostingHeaders());
+
         $sourceConfig = $this->config['source'];
         $destConfig = $this->config['destination'];
 
