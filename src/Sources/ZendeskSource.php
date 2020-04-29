@@ -48,6 +48,23 @@ class ZendeskSource extends AbstractSource {
     }
 
     /**
+     * Get our authorization headers so that we can rehost files.
+     *
+     * @return array
+     */
+    public function getFileRehostingHeaders(): array {
+        $zdAuthHeader = $this->zendesk->getDefaultHeader('Authorization', null);
+        if ($zdAuthHeader !== null) {
+            return [];
+        }
+
+        $result = [
+            "Authorization: $zdAuthHeader",
+        ];
+        return $result;
+    }
+
+    /**
      * @param string $basePath
      */
     public function setBasePath(string $basePath) {
@@ -181,7 +198,7 @@ class ZendeskSource extends AbstractSource {
      * Process: GET zendesk articles, POST/PATCH vanilla knowledge base articles
      */
     private function processKnowledgeArticles() {
-        list($pageLimit, $pageFrom, $pageTo) = $this->setPageLimits();
+        [$pageLimit, $pageFrom, $pageTo] = $this->setPageLimits();
         $locale = $this->config['sourceLocale'] ?? self::DEFAULT_SOURCE_LOCALE;
 
         for ($page = $pageFrom; $page <= $pageTo; $page++) {
