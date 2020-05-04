@@ -20,6 +20,16 @@ use Vanilla\KnowledgePorter\TaskLoggerAwareTrait;
 abstract class AbstractDestination implements TaskLoggerAwareInterface {
     use ConfigurableTrait, TaskLoggerAwareTrait;
 
+    /** @var string[] */
+    protected $rehostHeaders = [];
+
+    /**
+     * @param string[] $rehostHeaders
+     */
+    public function setRehostHeaders(array $rehostHeaders): void {
+        $this->rehostHeaders = $rehostHeaders;
+    }
+
     /**
      * Import knowledge bases from source to destination.
      *

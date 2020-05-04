@@ -49,6 +49,13 @@ abstract class AbstractSource implements LoggerAwareInterface {
     abstract public function import(): void;
 
     /**
+     * Get an array of headers that should be passed along to vanilla for file rehosting.
+     *
+     * @return array
+     */
+   abstract public function getFileRehostingHeaders(): array;
+
+    /**
      * Apply transformation rules to row set.
      *
      * @param iterable $rows

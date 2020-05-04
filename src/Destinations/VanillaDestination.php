@@ -7,6 +7,7 @@
 
 namespace Vanilla\KnowledgePorter\Destinations;
 
+use Garden\Http\HttpResponse;
 use Garden\Http\HttpResponseException;
 use Garden\Schema\Schema;
 use Garden\Schema\ValidationException;
@@ -148,7 +149,15 @@ class VanillaDestination extends AbstractDestination {
                     unset($row['userData']);
                 }
                 $row['validateLocale'] = false;
-                $res = $this->vanillaApi->patch('/api/v2/articles/'.$row['articleID'], $row);
+                $rehostFileParams = [
+                    'fileRehosting' => [
+                        'enabled' => true,
+                        'requestHeaders' => $this->rehostHeaders,
+                    ],
+                ];
+
+                $res = $this->vanillaApi->patch('/api/v2/articles/'.$row['articleID'], array_merge($row, $rehostFileParams));
+                $this->logRehostHeaders($res);
             }
         }
     }
@@ -374,6 +383,13 @@ class VanillaDestination extends AbstractDestination {
                 $alias = $row["alias"] ?? null;
                 unset($row['alias']);
 
+                $rehostFileParams = [
+                    'fileRehosting' => [
+                        'enabled' => true,
+                        'requestHeaders' => $this->rehostHeaders,
+                    ],
+                ];
+
                 try {
                     $user = empty($row['userData']) ? [] : $this->getOrCreateUser($row['userData']);
                     // This should probably grab from the edit endpoint because that's what you'll be comparing to.
@@ -394,7 +410,9 @@ class VanillaDestination extends AbstractDestination {
                         if (!empty($user)) {
                             $patch['updateUserID'] = $user['userID'];
                         }
-                        $article = $this->vanillaApi->patch('/api/v2/articles/' . $existingArticle['articleID'], $patch)->getBody();
+                        $response = $this->vanillaApi->patch('/api/v2/articles/' . $existingArticle['articleID'], array_merge($patch, $rehostFileParams));
+                        $this->logRehostHeaders($response);
+                        $article = $response->getBody();
                         if (isset($row['featured'])) {
                             $this->putFeaturedArticle($existingArticle['articleID'], $row['featured']);
                         }
@@ -408,7 +426,9 @@ class VanillaDestination extends AbstractDestination {
                         $row['updateUserID'] = $user['userID'];
                         $row['insertUserID'] = $user['userID'];
                     }
-                    $article = $this->vanillaApi->post('/api/v2/articles', $row)->getBody();
+                    $response = $this->vanillaApi->post('/api/v2/articles', array_merge($row, $rehostFileParams));
+                    $this->logRehostHeaders($response);
+                    $article = $response->getBody();
                     $this->vanillaApi->put('/api/v2/articles/' . $article['articleID'] . '/aliases', ["aliases" => [$alias]]);
                     if (isset($row['featured']) && $row['featured']) {
                         $this->putFeaturedArticle($article['articleID'], $row['featured']);
@@ -422,6 +442,24 @@ class VanillaDestination extends AbstractDestination {
             "Done (added: {added}, updated: {updated}, skipped: {skipped}, deleted: {deleted}, undeleted: {undeleted})",
             ['added' => $added, 'updated' => $updated, 'skipped' => $skipped, 'deleted' => $deleted, 'undeleted' => $undeleted]
         );
+    }
+
+    /**
+     * Log information related to file rehosting headers.
+     *
+     * @param HttpResponse $response The response to check.
+     */
+    private function logRehostHeaders(HttpResponse $response) {
+        $successCount = (int) $response->getHeader('x-file-rehosted-success-count', 0);
+        $failedCount = (int) $response->getHeader('x-file-rehosted-failed-count', 0);
+
+        if ($successCount > 0) {
+            $this->logger->info("Successfully rehosted $successCount files.");
+        }
+
+        if ($failedCount > 0) {
+            $this->logger->warning("Failed to rehost $successCount files.");
+        }
     }
 
     /**

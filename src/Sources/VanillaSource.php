@@ -67,6 +67,14 @@ class VanillaSource extends AbstractSource {
     }
 
     /**
+     * Vanilla does not have any need for rehosting headers.
+     * @return array
+     */
+    public function getFileRehostingHeaders(): array {
+        return [];
+    }
+
+    /**
      * Process: GET vanilla kb categories, POST/PATCH vanilla knowledge categories
      */
     private function processKnowledgeCategories() {

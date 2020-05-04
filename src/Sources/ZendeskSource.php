@@ -48,6 +48,23 @@ class ZendeskSource extends AbstractSource {
     }
 
     /**
+     * Get our authorization headers so that we can rehost files.
+     *
+     * @return array
+     */
+    public function getFileRehostingHeaders(): array {
+        $zdAuthHeader = $this->zendesk->getDefaultHeader('Authorization', null);
+        if ($zdAuthHeader !== null) {
+            return [];
+        }
+
+        $result = [
+            "Authorization: $zdAuthHeader",
+        ];
+        return $result;
+    }
+
+    /**
      * @param string $basePath
      */
     public function setBasePath(string $basePath) {
@@ -181,7 +198,7 @@ class ZendeskSource extends AbstractSource {
      * Process: GET zendesk articles, POST/PATCH vanilla knowledge base articles
      */
     private function processKnowledgeArticles() {
-        list($pageLimit, $pageFrom, $pageTo) = $this->setPageLimits();
+        [$pageLimit, $pageFrom, $pageTo] = $this->setPageLimits();
         $locale = $this->config['sourceLocale'] ?? self::DEFAULT_SOURCE_LOCALE;
 
         for ($page = $pageFrom; $page <= $pageTo; $page++) {
@@ -207,7 +224,7 @@ class ZendeskSource extends AbstractSource {
                 'format' => 'format',
                 'locale' => ['column' => 'locale', 'filter' => [$this, 'getSourceLocale']],
                 'name' => 'name',
-                'body' => ['column' => 'body', 'filter' => [$this, 'parseUrls']],
+                'body' => ['column' => 'body', 'filter' => [$this, 'prepareBody']],
                 'featured' => ['column' => 'promoted'],
                 'alias' => ['column' => 'id', 'filter' => [$this, 'setAlias']],
                 'skip' => ['columns' => ['draft', 'user_segment_id'], 'filter' => [$this, 'setSkipStatus']],
@@ -227,7 +244,7 @@ class ZendeskSource extends AbstractSource {
                         'format' => ["placeholder" => 'wysiwyg'],
                         'locale' => ['column' => 'locale', 'filter' => [$this, 'getSourceLocale']],
                         'name' => 'title',
-                        'body' => ['column' => 'body', 'filter' => [$this, 'parseUrls']],
+                        'body' => ['column' => 'body', 'filter' => [$this, 'prepareBody']],
                         'skip' => ['columns' => ['draft', 'user_segment_id'], 'filter' => [$this, 'setSkipStatus']],
                         'dateUpdated' => 'updated_at',
                         'dateInserted' => 'created_at',
@@ -429,6 +446,40 @@ class ZendeskSource extends AbstractSource {
     }
 
     /**
+     * Prepeare article body: parse uerls and parse attachments if neeeded
+     *
+     * @param string $body
+     * @param array $row
+     * @return string
+     */
+    protected function prepareBody(string $body, array $row): string {
+        $body = $this->parseUrls($body);
+        if ($this->config['import']['attachments'] ?? false) {
+            $body = $this->addAttachments($body, $row);
+        }
+        return $body;
+    }
+
+    /**
+     * Add html elements with attachment links
+     *
+     * @param string $body
+     * @param array $article
+     * @return string
+     */
+    public function addAttachments(string $body, array $article): string {
+        $attachments = $this->zendesk->getArticleAttachments($article['id']);
+
+        foreach ($attachments as $attachment) {
+            $url =htmlspecialchars($attachment['content_url']);
+            $name = htmlspecialchars($attachment['display_file_name']);
+            $body .= '<p><a href="'.$url.'" download>'.$name.'</a></p>';
+        }
+
+        return $body;
+    }
+
+    /**
      * Replace urls with new domain.
      *
      * @param string $body
@@ -610,6 +661,10 @@ HTML;
                     "helpful" => [
                         "type" => "boolean",
                         "default" => false,
+                    ],
+                    "attachments" => [
+                        "type" => "boolean",
+                        "default" => true,
                     ],
                 ],
             ],
