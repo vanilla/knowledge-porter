@@ -10,14 +10,17 @@ namespace Vanilla\KnowledgePorter\Destinations;
 use Garden\Http\HttpResponse;
 use Garden\Http\HttpResponseException;
 use Garden\Schema\Schema;
+use Garden\Schema\ValidationException;
 use Psr\Container\ContainerInterface;
 use Vanilla\KnowledgePorter\HttpClients\HttpCacheMiddleware;
 use Vanilla\KnowledgePorter\HttpClients\HttpLogMiddleware;
+use Vanilla\KnowledgePorter\HttpClients\HttpVanillaCloudRateLimitBypassMiddleware;
 use Vanilla\KnowledgePorter\HttpClients\NotFoundException;
 use Vanilla\KnowledgePorter\HttpClients\VanillaClient;
 
 /**
  * Class VanillaDestination
+ *
  * @package Vanilla\KnowledgePorter\Destinations
  */
 class VanillaDestination extends AbstractDestination {
@@ -40,7 +43,7 @@ class VanillaDestination extends AbstractDestination {
         'urlCode',
         'sourceLocale',
         'viewType',
-        'sortArticles'
+        'sortArticles',
     ];
 
     const KB_TRANSLATION_FIELDS = [
@@ -49,7 +52,7 @@ class VanillaDestination extends AbstractDestination {
 
     const ARTICLE_TRANSLATION_FIELDS = [
         'name',
-        'body'
+        'body',
     ];
 
     const KB_CATEGORY_EDIT_FIELDS = [
@@ -82,6 +85,7 @@ class VanillaDestination extends AbstractDestination {
 
     /**
      * @param iterable $rows
+     * @return iterable
      */
     public function importKnowledgeBases(iterable $rows): iterable {
         foreach ($rows as $row) {
@@ -93,7 +97,7 @@ class VanillaDestination extends AbstractDestination {
                 if ($this->config['patchKnowledgeBase'] ?? false) {
                     $patch = $this->updateFields($existing, $row, self::KB_EDIT_FIELDS);
                     if (!empty($patch)) {
-                        $kb = $this->vanillaApi->patch('/api/v2/knowledge-bases/' . $existing['knowledgeBaseID'], $patch)->getBody();
+                        $kb = $this->vanillaApi->patch('/api/v2/knowledge-bases/'.$existing['knowledgeBaseID'], $patch)->getBody();
                     }
                 }
             } catch (NotFoundException $ex) {
@@ -133,7 +137,7 @@ class VanillaDestination extends AbstractDestination {
             if (($row['skip'] ?? 'false') === 'true') {
                 continue;
             }
-            $existing = $this->vanillaApi->get('/api/v2/articles/'.$row['articleID'].'?'.http_build_query(['locale'=> $row['locale']]))->getBody();
+            $existing = $this->vanillaApi->get('/api/v2/articles/'.$row['articleID'].'?'.http_build_query(['locale' => $row['locale']]))->getBody();
             $patch = $this->updateFields($existing, $row, self::ARTICLE_TRANSLATION_FIELDS);
             if (!empty($patch)) {
                 // $row contains all fields needed for translation api
@@ -209,6 +213,7 @@ class VanillaDestination extends AbstractDestination {
     public function importKnowledgeCategories(iterable $rows): iterable {
         try {
             $this->logger->beginInfo("Importing knowledge categories");
+
             return $this->importKnowledgeCategoriesInternal($rows);
         } catch (\Exception $ex) {
             $this->logger->endError($ex->getMessage());
@@ -253,9 +258,10 @@ class VanillaDestination extends AbstractDestination {
                     $updated++;
                     if (!empty($patch)) {
                         $kbCat = $this->vanillaApi->patch(
-                            '/api/v2/knowledge-categories/' . $existing['knowledgeCategoryID'],
+                            '/api/v2/knowledge-categories/'.$existing['knowledgeCategoryID'],
                             $patch
-                        )->getBody();
+                        )->getBody()
+                        ;
                     }
                 } catch (NotFoundException | HttpResponseException $ex) {
                     if ($ex->getCode() === 500) {
@@ -278,6 +284,7 @@ class VanillaDestination extends AbstractDestination {
             );
         }
     }
+
     /**
      * Try to reprocess failed knowledge categories that failed to import.
      *
@@ -308,14 +315,14 @@ class VanillaDestination extends AbstractDestination {
                 }
 
                 if (!$retry && (count(self::$kbcats) > 0)) {
-                    $this->logger->info('Error importing to ' . count(self::$kbcats) . ' categories');
+                    $this->logger->info('Error importing to '.count(self::$kbcats).' categories');
                     die();
                 }
 
                 $this->logger->end("Done(successful:{successful}, failed:{failed})",
                     [
                         'successful' => ($initialCount - self::$count),
-                        "failed" => count(self::$kbcats)
+                        "failed" => count(self::$kbcats),
                     ]
                 );
             }
@@ -326,10 +333,12 @@ class VanillaDestination extends AbstractDestination {
      * Import articles.
      *
      * @param iterable $rows An iterator of articles to import.
+     * @return iterable
      */
     public function importKnowledgeArticles(iterable $rows): iterable {
         try {
             $this->logger->beginInfo("Importing articles");
+
             return $this->importKnowledgeArticlesInternal($rows);
         } catch (\Exception $ex) {
             $this->logger->endError($ex->getMessage());
@@ -350,9 +359,10 @@ class VanillaDestination extends AbstractDestination {
                 try {
                     $existingArticle = $this->vanillaApi->getKnowledgeArticleBySmartID($row["foreignID"]);
                     $article = $this->vanillaApi->patch(
-                        '/api/v2/articles/' . $existingArticle['articleID'] . '/status',
+                        '/api/v2/articles/'.$existingArticle['articleID'].'/status',
                         ['status' => 'deleted']
-                    )->getBody();
+                    )->getBody()
+                    ;
                     $deleted++;
                 } catch (NotFoundException $ex) {
                     $skipped++;
@@ -386,7 +396,7 @@ class VanillaDestination extends AbstractDestination {
                     $existingArticle = $this->vanillaApi->getKnowledgeArticleBySmartID($row["foreignID"]);
                     if ($existingArticle['status'] === 'deleted') {
                         $this->vanillaApi->patch(
-                            '/api/v2/articles/' . $existingArticle['articleID'] . '/status',
+                            '/api/v2/articles/'.$existingArticle['articleID'].'/status',
                             ['status' => "published"]
                         );
                         if (isset($row['featured'])) {
@@ -460,6 +470,7 @@ class VanillaDestination extends AbstractDestination {
      */
     public function resolveKnowledgeBaseID(string $smartID): int {
         $kb = $this->vanillaApi->get("/api/v2/knowledge-bases/".rawurlencode($smartID));
+
         return $kb["knowledgeBaseID"];
     }
 
@@ -471,6 +482,7 @@ class VanillaDestination extends AbstractDestination {
      */
     public function getKnowledgeBaseTranslation(array $query): int {
         $translations = $this->vanillaApi->get("/api/v2/translations/kb/".'?'.http_build_query($query))->getBody();
+
         return $translations;
     }
 
@@ -482,6 +494,7 @@ class VanillaDestination extends AbstractDestination {
      */
     public function resolveKnowledgeCategoryID(string $smartID): int {
         $kb = $this->vanillaApi->get("/api/v2/knowledge-categories/".rawurlencode($smartID));
+
         return $kb["knowledgeCategoryID"];
     }
 
@@ -497,6 +510,7 @@ class VanillaDestination extends AbstractDestination {
 
     /**
      * @param array $config
+     * @throws ValidationException
      */
     public function setConfig(array $config): void {
         /** @var Schema $schema */
@@ -514,6 +528,13 @@ class VanillaDestination extends AbstractDestination {
 
         if ($config['api']['cache'] ?? true) {
             $this->vanillaApi->addMiddleware($this->container->get(HttpCacheMiddleware::class));
+        }
+
+        if ($config['rate_limit_bypass_token'] ?? false) {
+            /* @var HttpVanillaCloudRateLimitBypassMiddleware $rateLimitBypass */
+            $rateLimitBypass = $this->container->get(HttpVanillaCloudRateLimitBypassMiddleware::class);
+            $rateLimitBypass->setBypassToken($config['rate_limit_bypass_token']);
+            $this->vanillaApi->addMiddleware($rateLimitBypass);
         }
 
         $this->vanillaApi->setToken($this->config['token']);
@@ -541,6 +562,7 @@ class VanillaDestination extends AbstractDestination {
                 $res[$fieldKey] = $new[$fieldKey];
             }
         }
+
         return $res;
     }
 
@@ -570,6 +592,7 @@ class VanillaDestination extends AbstractDestination {
                 }
                 break;
         }
+
         return $res;
     }
 
@@ -584,23 +607,26 @@ class VanillaDestination extends AbstractDestination {
             "protocol:s?" => [
                 "description" => "Protocol to use for to access domain. (http || https)",
                 "minLength" => 4,
-                "default" => "https"
+                "default" => "https",
             ],
             "domain:s" => [
                 "description" => "Vanilla knowledge base domain.",
-                "minLength" => 5
+                "minLength" => 5,
             ],
             "token:s" => [
-                "description" => "Vanilla api Bearer token. Ex: 8piiaCXA2ts"
+                "description" => "Vanilla api Bearer token. Ex: 8piiaCXA2ts",
+            ],
+            "rate_limit_bypass_token:s?" => [
+                "description" => "Vanilla Cloud rate limiting bypass token. Ex: fgc60lt90412yOUMJ8gRC1VXxmE0k",
             ],
             "update:s?" => [
                 "description" => "Destination update mode.",
                 "enum" => [
                     self::UPDATE_MODE_ALWAYS,
                     self::UPDATE_MODE_ON_CHANGE,
-                    self::UPDATE_MODE_ON_DATE
+                    self::UPDATE_MODE_ON_DATE,
                 ],
-                "default" => self::UPDATE_MODE_ALWAYS
+                "default" => self::UPDATE_MODE_ALWAYS,
             ],
             "api:o?" => [
                 "properties" => [
@@ -616,11 +642,11 @@ class VanillaDestination extends AbstractDestination {
             ],
             "retryLimit:i?" => [
                 "description" => "Limit for retries",
-                "default" => 1
+                "default" => 1,
             ],
             "patchKnowledgeBase:b?" => [
                 "description" => "Patch knowledge base if it exists already.",
-                "default" => false
+                "default" => false,
             ],
             "syncUserByEmailOnly:b?" => [
                 "description" => "Sync user by email only mode. When `false` allows 2nd lookup by username.",

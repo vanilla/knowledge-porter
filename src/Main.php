@@ -9,16 +9,25 @@ namespace Vanilla\KnowledgePorter;
 
 use Garden\Cli\Args;
 use Garden\Cli\Cli;
+use Garden\Cli\StreamLogger;
+use Garden\Cli\TaskLogger;
 use Garden\Container\Container;
 use Garden\Container\Reference;
 use Psr\Container\ContainerInterface;
+use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerInterface;
+use Psr\SimpleCache\CacheInterface;
+use Symfony\Component\Cache\Adapter\FilesystemAdapter;
+use Symfony\Component\Cache\Psr16Cache;
+use Symfony\Component\Cache\Simple\ChainCache;
 use Vanilla\KnowledgePorter\Commands\AbstractCommand;
-use Vanilla\KnowledgePorter\HttpClients\HttpCacheMiddleware;
-use Vanilla\KnowledgePorter\HttpClients\HttpLogMiddleware;
 use Vanilla\KnowledgePorter\HttpClients\HttpRateLimitMiddleware;
 use Vanilla\KnowledgePorter\HttpClients\VanillaClient;
 use Vanilla\KnowledgePorter\HttpClients\ZendeskClient;
+use Garden\Container\ContainerException;
+use Garden\Container\NotFoundException;
+use InvalidArgumentException;
+use Exception;
 
 /**
  * The main program loop.
@@ -36,6 +45,8 @@ final class Main {
 
     /**
      * Main constructor.
+     *
+     * @throws Exception
      */
     public function __construct() {
         $this->container = $this->createContainer();
@@ -47,6 +58,9 @@ final class Main {
      *
      * @param array $argv Command line arguments.
      * @return int Returns the integer result of the command which should be propagated back to the command line.
+     * @throws ContainerException
+     * @throws NotFoundException
+     * @throws Exception
      */
     public function run(array $argv): int {
         $args = $this->cli->parse($argv);
@@ -62,13 +76,15 @@ final class Main {
                 $command = $this->container->get($className);
                 $command->run();
             } else {
-                throw new \InvalidArgumentException("Cannot find a class for command: ".$args->getCommand());
+                throw new InvalidArgumentException("Cannot find a class for command: ".$args->getCommand(), 1);
             }
+
             return 0;
-        } catch (\Exception $ex) {
+        } catch (Exception $ex) {
             /* @var LoggerInterface $log */
             $log = $this->container->get(LoggerInterface::class);
             $log->error($ex->getMessage());
+
             return $ex->getCode();
         }
     }
@@ -77,6 +93,7 @@ final class Main {
      * Create and configure the command line interface for the application.
      *
      * @return Cli
+     * @throws Exception
      */
     private function createCli(): Cli {
         $cli = new Cli();
@@ -103,44 +120,35 @@ final class Main {
             ->setInstance(Container::class, $di)
             ->defaultRule()
             ->setShared(true)
-
             ->rule(ContainerInterface::class)
             ->setAliasOf(Container::class)
-
             ->rule(LoggerInterface::class)
-            ->setAliasOf(\Garden\Cli\TaskLogger::class)
-
-            ->rule(\Garden\Cli\TaskLogger::class)
-            ->setConstructorArgs(['logger' => new Reference(\Garden\Cli\StreamLogger::class)])
+            ->setAliasOf(TaskLogger::class)
+            ->rule(TaskLogger::class)
+            ->setConstructorArgs(['logger' => new Reference(StreamLogger::class)])
             ->setShared(true)
-
-            ->rule(\Psr\Log\LoggerAwareInterface::class)
+            ->rule(LoggerAwareInterface::class)
             ->addCall('setLogger')
-
             ->rule(TaskLoggerAwareInterface::class)
             ->addCall('setLogger')
-            ;
+        ;
 
 
         $di
-            ->rule(\Psr\Log\LoggerAwareInterface::class)
+            ->rule(LoggerAwareInterface::class)
             ->addCall('setLogger')
-
-            ->rule(\Psr\SimpleCache\CacheInterface::class)
-            ->setClass(\Symfony\Component\Cache\Simple\ChainCache::class)
-            ->setFactory(function (): \Psr\SimpleCache\CacheInterface {
-                $fileCache = new \Symfony\Component\Cache\Adapter\FilesystemAdapter('knowledge-porter', strtotime('12 hours'), './cache');
-                $r = new \Symfony\Component\Cache\Psr16Cache($fileCache);
+            ->rule(CacheInterface::class)
+            ->setClass(ChainCache::class)
+            ->setFactory(function (): CacheInterface {
+                $fileCache = new FilesystemAdapter('knowledge-porter', strtotime('12 hours'), './cache');
+                $r = new Psr16Cache($fileCache);
 
                 return $r;
             })
             ->setShared(true)
-
             ->rule(ZendeskClient::class)
             ->addCall('addMiddleware', [new Reference(HttpRateLimitMiddleware::class)])
-//            ->addCall('addMiddleware', [new Reference(\Vanilla\Analyzer\HttpRetryMiddleware::class)])
             ->setShared(false)
-
             ->rule(VanillaClient::class)
             ->addCall('addMiddleware', [new Reference(HttpRateLimitMiddleware::class)])
             ->setShared(false)
@@ -159,6 +167,7 @@ final class Main {
         $parts = explode('-', $kebabCase);
         $parts = array_map('ucfirst', $parts);
         $result = implode('', $parts);
+
         return $result;
     }
 }

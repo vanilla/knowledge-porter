@@ -15,6 +15,7 @@ use Psr\Log\LogLevel;
 
 /**
  * Class HttpLogMiddleware
+ *
  * @package Vanilla\KnowledgePorter\HttpClients
  */
 class HttpLogMiddleware {
@@ -26,6 +27,7 @@ class HttpLogMiddleware {
 
     /**
      * HttpLogMiddleware constructor.
+     *
      * @param TaskLogger $logger
      */
     public function __construct(TaskLogger $logger) {
@@ -46,13 +48,14 @@ class HttpLogMiddleware {
         }
 
         try {
-            $this->logger->begin($request->getHeader('X-LogLevel') ?: LogLevel::INFO, "{method} {url}", [
+            $this->logger->begin($request->getHeader('X-LogLevel') ?: LogLevel::INFO, "`{method}` {url}", [
                 'method' => $request->getMethod(),
-                'url' => $request->getUrl()
+                'url' => urldecode($request->getUrl()),
             ]);
             /* @var HttpResponse $response */
             $response = $next($request);
             $this->logger->endHttpStatus($response->getStatusCode());
+
             return $response;
         } catch (\Exception $ex) {
             $this->logger->endError($ex->getMessage());
