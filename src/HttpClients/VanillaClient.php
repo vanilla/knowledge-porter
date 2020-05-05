@@ -147,7 +147,7 @@ class VanillaClient extends HttpClient {
             if (!empty($message)) {
                 throw new HttpResponseException($response, $message);
             }
-        } elseif ($response->getStatusCode() >= 500 && $options['throw'] ?? $this->throwExceptions) {
+        } elseif ($response->getStatusCode() >= 500 && ($options['throw'] ?? $this->throwExceptions)) {
             throw new HttpResponseException($response, $response->getRawBody());
         } else {
             parent::handleErrorResponse($response, $options);
