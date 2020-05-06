@@ -1,3 +1,4 @@
 /vendor/
 ./tests/mocks/*
 /tests/cache/
+.idea

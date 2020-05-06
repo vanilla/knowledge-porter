@@ -1,4 +1,3 @@
 #!/usr/bin/env php
 <?php
-$result = require_once __DIR__.'/../src/bootstrap.php';
-return $result;
+require_once __DIR__.'/../src/bootstrap.php';
