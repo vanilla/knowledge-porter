@@ -61,6 +61,9 @@ class VanillaDestination extends AbstractDestination {
     /** @var array */
     private static $kbcats = [];
 
+    /** @var int $count */
+    private static $count;
+
     /**
      * @var VanillaClient
      */
@@ -264,8 +267,17 @@ class VanillaDestination extends AbstractDestination {
                         $failures++;
                         continue;
                     } else {
-                        $kbCat = $this->vanillaApi->post('/api/v2/knowledge-categories', $row)->getBody();
-                        $added++;
+                        try {
+                            $kbCat = $this->vanillaApi->post('/api/v2/knowledge-categories', $row)->getBody();
+                            $added++;
+                        } catch (NotFoundException | HttpResponseException $ex) {
+                            if ($ex->getCode() === 404) {
+                                $row['failed'] = true;
+                                self::$kbcats[] = $row;
+                                $failures++;
+                                continue;
+                            }
+                        }
                     }
                 }
             }

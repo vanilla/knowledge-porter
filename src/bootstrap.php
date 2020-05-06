@@ -8,6 +8,7 @@
 error_reporting(E_ALL | ~E_NOTICE | ~E_USER_NOTICE); //E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR | E_USER_ERROR | E_RECOVERABLE_ERROR);
 ini_set('display_errors', 'on');
 ini_set('track_errors', 1);
+define('ROOT_PATH', dirname(__DIR__));
 
 date_default_timezone_set('UTC');
 
