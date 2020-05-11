@@ -7,8 +7,6 @@
 
 namespace Vanilla\KnowledgePorter\Adapters;
 
-use mysql_xdevapi\Exception;
-
 /**
  * The Kayako XML adapter.
  */
