@@ -89,8 +89,8 @@ class KayakoXmlAdapter {
      */
     public function getUser(int $userID): array {
         $xml = $this->getXml('users.xml');
-        $user = $xml->xpath('/users/iser[@id = "'.$userID.'"]');
-        return (array)$user;
+        $user = $xml->xpath('//staffusers/staff/id[.="'.$userID.'"]/parent::*');
+        return (array)$user[0] ?? [];
     }
 
     /**
