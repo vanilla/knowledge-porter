@@ -92,7 +92,7 @@ class KayakoXmlAdapter {
     }
 
     /**
-     * Get $article bases from $article.xml
+     * Get articles from articles.xml
      *
      * @return iterable
      */
