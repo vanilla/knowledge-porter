@@ -68,4 +68,48 @@ class KayakoXmlAdapter {
         }
         return $res;
     }
+
+    /**
+     * Get knowledge bases from knowledgeBases.xml
+     *
+     * @return iterable
+     */
+    public function getUsers(): iterable {
+        $xml = $this->getXml('users.xml');
+        foreach ($xml->children() as $user) {
+            yield (array)$user;
+        }
+    }
+
+    /**
+     * Get user data by user id
+     *
+     * @param int $userID
+     * @return array
+     */
+    public function getUser(int $userID): array {
+        $xml = $this->getXml('users.xml');
+        $user = $xml->xpath('/users/iser[@id = "'.$userID.'"]');
+        return (array)$user;
+    }
+
+    /**
+     * Get knowledge bases from knowledgeBases.xml
+     *
+     * @return iterable
+     */
+    public function getArticles(): iterable {
+        $xml = $this->getXml('articles.xml');
+        foreach ($xml->children() as $article) {
+            $row = (array)$article;
+            $articleID = $article->xpath('kbarticleid')[0];
+            $categories = $article->xpath('categories/categoryid');
+            foreach ($categories as $categoryid) {
+                $row['kbarticleid'] = $articleID.'-'.$categoryid;
+                $row['categoryid'] = (string)$categoryid;
+                yield $row;
+            }
+
+        }
+    }
 }

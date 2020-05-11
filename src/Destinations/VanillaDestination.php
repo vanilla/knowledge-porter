@@ -107,6 +107,12 @@ class VanillaDestination extends AbstractDestination {
                 $kb = $this->vanillaApi->post('/api/v2/knowledge-bases', $row)->getBody();
             }
             $kb = $kb ?? $existing;
+            if (($row['generateRootCategoryForeignID'] ?? 'false') === 'true') {
+                $kbCat = $this->vanillaApi->patch(
+                    '/api/v2/knowledge-categories/'.$kb['rootCategoryID'].'/root',
+                    ['foreignID' => $row["foreignID"].'-root']
+                )->getBody();
+            }
             yield $kb;
         }
     }
@@ -188,11 +194,15 @@ class VanillaDestination extends AbstractDestination {
 
     /**
      * @param array $userData
+     * @param bool $update Update user if exists already
      * @return array
      */
-    private function getOrCreateUser(array $userData): array {
+    private function getOrCreateUser(array $userData, bool $update = false): array {
         try {
             $user = $this->vanillaApi->get('/api/v2/users/$email:'.$userData['email'])->getBody();
+            if ($update) {
+                $user = $this->vanillaApi->patch('/api/v2/users/'.$user['userID'], $userData)->getBody();
+            }
         } catch (NotFoundException $ex) {
             if (!$this->config['syncUserByEmailOnly']) {
                 try {
@@ -364,7 +374,7 @@ class VanillaDestination extends AbstractDestination {
      * @return array Returns an array in the format: `['added' => int, 'updated' => int, 'skipped' => int]`.
      */
     private function importKnowledgeArticlesInternal(iterable $rows): iterable {
-        $added = $updated = $skipped = $deleted = $undeleted = 0;
+        $added = $updated = $skipped = $deleted = $undeleted = $failed = 0;
 
         foreach ($rows as $row) {
             if (($row['skip'] ?? '') === 'true') {
@@ -438,22 +448,40 @@ class VanillaDestination extends AbstractDestination {
                         $row['updateUserID'] = $user['userID'];
                         $row['insertUserID'] = $user['userID'];
                     }
-                    $response = $this->vanillaApi->post('/api/v2/articles', array_merge($row, $rehostFileParams));
-                    $this->logRehostHeaders($response);
-                    $article = $response->getBody();
-                    $this->vanillaApi->put('/api/v2/articles/' . $article['articleID'] . '/aliases', ["aliases" => [$alias]]);
-                    if (isset($row['featured']) && $row['featured']) {
-                        $this->putFeaturedArticle($article['articleID'], $row['featured']);
+                    try {
+                        $response = $this->vanillaApi->post('/api/v2/articles', array_merge($row, $rehostFileParams));
+                        $this->logRehostHeaders($response);
+                        $article = $response->getBody();
+                        if (!is_null($alias)) {
+                            $this->vanillaApi->put('/api/v2/articles/' . $article['articleID'] . '/aliases', ["aliases" => [$alias]]);
+                        }
+                        if (isset($row['featured']) && $row['featured']) {
+                            $this->putFeaturedArticle($article['articleID'], $row['featured']);
+                        }
+                        $added++;
+                    } catch (\Throwable $t) {
+                        $this->logger->info('Failed to post article :'.json_encode($article));
+                        $failed++;
                     }
-                    $added++;
                 }
             }
             yield $article ?? $existingArticle;
         }
         $this->logger->end(
-            "Done (added: {added}, updated: {updated}, skipped: {skipped}, deleted: {deleted}, undeleted: {undeleted})",
-            ['added' => $added, 'updated' => $updated, 'skipped' => $skipped, 'deleted' => $deleted, 'undeleted' => $undeleted]
+            "Done (added: {added}, updated: {updated}, skipped: {skipped}, deleted: {deleted}, undeleted: {undeleted}, failed: {failed})",
+            ['added' => $added, 'updated' => $updated, 'skipped' => $skipped, 'deleted' => $deleted, 'undeleted' => $undeleted, 'failed' => $failed]
         );
+    }
+
+    /**
+     * @param iterable $rows
+     * @return iterable
+     */
+    public function importUsers(iterable $rows): iterable {
+        foreach ($rows as $row) {
+            $user = $this->getOrCreateUser($row, true);
+            yield $user;
+        }
     }
 
     /**

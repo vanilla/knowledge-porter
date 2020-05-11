@@ -7,6 +7,8 @@
 
 namespace Vanilla\KnowledgePorter\Sources;
 
+use DOMDocument;
+use DOMNode;
 use Garden\Schema\Schema;
 use Psr\Container\ContainerInterface;
 use Vanilla\KnowledgePorter\Destinations\VanillaDestination;
@@ -17,7 +19,7 @@ use Vanilla\KnowledgePorter\Adapters\KayakoXmlAdapter;
  * @package Vanilla\KnowledgePorter\Sources
  */
 class KayakoXmlSource extends AbstractSource {
-    const DEFAULT_SOURCE_LOCALE = 'en-us';
+    const DEFAULT_SOURCE_LOCALE = 'en';
     const DEFAULT_LOCALE = 'en';
 
     /** @var KayakoXmlAdapter $kayakoXml */
@@ -64,6 +66,14 @@ class KayakoXmlSource extends AbstractSource {
         if ($this->config['import']['knowledgeCategories'] ?? true) {
             $this->processKnowledgeCategories();
         }
+
+        if ($this->config['import']['users'] ?? true) {
+            $this->processUsers();
+        }
+
+        if ($this->config['import']['articles'] ?? true) {
+            $this->processKnowledgeArticles();
+        }
     }
 
     /**
@@ -83,10 +93,34 @@ class KayakoXmlSource extends AbstractSource {
             'viewType' => 'viewType',
             'sortArticles' => 'sortArticles',
             'dateUpdated' => ['column' => 'dateUpdated', 'filter' => [$this, 'dateFormat']],
+            'generateRootCategoryForeignID' => ['placeholder' => 'true'],
         ]);
         $dest = $this->getDestination();
         foreach ($dest->importKnowledgeBases($kbs) as $kb) {
             $this->logger->info('Knowledge base "'.$kb['name'].'" imported successfully');
+        }
+    }
+
+    /**
+     * Process: import users.xml, POST/PATCH vanilla users
+     */
+    private function processUsers() {
+        $usersFrom = $this->kayakoXml->getUsers();
+
+        $users = $this->transform($usersFrom, [
+            'name' => 'username',
+            'title' => 'fullname',
+            'email' => 'email',
+            'verified' => 'isenabled',
+            'password' => ['placeholder' => $this->config["foreignIDPrefix"] . 'password'],
+            'emailConfirmed' => ['placeholder' => true],
+            'bypassSpam' => ['placeholder' => true],
+            'roleID' => ['placeholder' => [8]],
+        ]);
+
+        $dest = $this->getDestination();
+        foreach ($dest->importUsers($users) as $user) {
+            $this->logger->info('User "'.$user['name'].'" imported successfully');
         }
     }
 
@@ -135,6 +169,135 @@ class KayakoXmlSource extends AbstractSource {
         }
         $this->logger->info($i.' failed knowledge categories imported successfully after retry');
     }
+
+    /**
+     * Process: import articles.xml, POST/PATCH vanilla knowledge base articles
+     */
+    private function processKnowledgeArticles() {
+        $locale = $this->config['sourceLocale'] ?? self::DEFAULT_SOURCE_LOCALE;
+
+        $articles = $this->kayakoXml->getArticles();
+        $knowledgeArticles = $this->transform($articles, [
+            'foreignID' => ["column" => 'kbarticleid', "filter" => [$this, "addPrefix"]],
+            'userData' => ['column' => 'editedstaffid', 'filter' => [$this, 'getUserData']],
+            'knowledgeCategoryID' => ["column" => 'categoryid', "filter" => [$this, "calculateCategoryID"]],
+            'format' => ['placeholder' => 'wysiwyg'],
+            'locale' => ['placeholder' => $locale],
+            'name' => 'subject',
+            'body' => ['column' => 'contents', 'filter' => [$this, 'prepareBody']],
+            'featured' => ['column' => 'isfeatured'],
+            'dateUpdated' => ['column' => 'editeddateline', 'filter' => [$this, 'dateFormat']],
+            'dateInserted' => ['column' => 'dateline', 'filter' => [$this, 'dateFormat']],
+        ]);
+        $dest = $this->getDestination();
+        $kbArticles = $dest->importKnowledgeArticles($knowledgeArticles);
+        $i = 0;
+        foreach ($kbArticles as $article) {
+            $i++;
+        }
+    }
+
+    /**
+     * @param $userID
+     * @return array
+     */
+    protected function getUserData($userID): array {
+        $data = [];
+        if ($this->config['import']['authors'] ?? false) {
+            if (!empty($userID)) {
+                $data = $this->kayakoXml->getUser($userID);
+            }
+        }
+        return $data;
+    }
+
+    /**
+     * Prepeare article body: parse uerls and parse attachments if neeeded
+     *
+     * @param string $body
+     * @param array $row
+     * @return string
+     */
+    protected function prepareBody(string $body, array $row): string {
+        $body = $this->parseUrls($body);
+        if ($this->config['import']['attachments'] ?? false) {
+            $body = $this->addAttachments($body, $row);
+        }
+        return $body;
+    }
+
+    /**
+     * Parse urls from a string.
+     *
+     * @param string $body
+     * @return string
+     */
+    protected function parseUrls(string $body = ''): string {
+        $sourceDomain = $this->config['domain'] ?? null;
+        $targetDomain = $this->config['targetDomain'] ?? null;
+        $prefix = $this->config['foreignIDPrefix'] ?? null;
+        if ($sourceDomain && $targetDomain && $prefix) {
+            $body = self::replaceUrls($body, $sourceDomain, $targetDomain, $prefix);
+        }
+        return $body;
+    }
+
+    /**
+     * Replace urls with new domain.
+     *
+     * @param string $body
+     * @param string $sourceDomain
+     * @param string $targetBaseUrl
+     * @param string $prefix
+     *
+     * @return string
+     */
+    public static function replaceUrls(string $body, string $sourceDomain, string $targetBaseUrl, string $prefix) {
+        $contentPrefix = <<<HTML
+<html><head><meta content="text/html; charset=utf-8" http-equiv="Content-Type"></head>
+<body>
+HTML;
+        $contentSuffix = "</body></html>";
+        $dom = new DOMDocument();
+        @$dom->loadHTML($contentPrefix . $body . $contentSuffix, LIBXML_HTML_NOIMPLIED| LIBXML_HTML_NODEFDTD);
+
+        $links = $dom->getElementsByTagName('a');
+        foreach ($links as $link) {
+            $parseUrl = parse_url($link->getAttribute('href'));
+            $host  = $parseUrl['host'] ?? null;
+            if ($host === $sourceDomain) {
+                $newLink = str_replace($host, $targetBaseUrl.'/kb/articles/aliases/'.$prefix, $link->getAttribute('href'));
+                $link->setAttribute('href', $newLink);
+            }
+        }
+        $body = $dom->getElementsByTagName('body');
+
+        // extract all the elements from the body.
+        $innerHTML = "";
+        foreach ($body as $element) {
+            $innerHTML .= self::domInnerHTML($element);
+        }
+
+        return $innerHTML;
+    }
+
+    /**
+     * Traverse a DomNode and return all the inner elements.
+     *
+     * @param DOMNode $element
+     * @return string
+     */
+    private static function domInnerHTML(DOMNode $element):string {
+        $innerHTML = "";
+        $children  = $element->childNodes;
+
+        foreach ($children as $child) {
+            $innerHTML .= $element->ownerDocument->saveHTML($child);
+        }
+
+        return $innerHTML;
+    }
+
 
     /**
      * Validate parentID field
@@ -217,6 +380,21 @@ class KayakoXmlSource extends AbstractSource {
     }
 
     /**
+     * Prepare article category ID.
+     *
+     * @param mixed $str
+     * @return string
+     */
+    protected function calculateCategoryID($str): string {
+        if (!empty($str)) {
+            $newStr = $this->config["foreignIDPrefix"] . $str;
+        } else {
+            $newStr = $this->config["foreignIDPrefix"] . '1-root';
+        }
+        return $newStr;
+    }
+
+    /**
      * Set config values.
      *
      * @param array $config
@@ -272,6 +450,10 @@ class KayakoXmlSource extends AbstractSource {
                         "default" => true,
                     ],
                     "knowledgeCategories" => [
+                        "type" => "boolean",
+                        "default" => true,
+                    ],
+                    "users" => [
                         "type" => "boolean",
                         "default" => true,
                     ],
