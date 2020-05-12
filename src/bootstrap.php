@@ -9,6 +9,8 @@ try {
     ini_set('display_errors', 'on');
     ini_set('track_errors', 1);
 
+    define('ROOT_PATH', dirname(__DIR__));
+
     date_default_timezone_set('UTC');
 
     $paths = [
