@@ -281,7 +281,13 @@ HTML;
             $parseUrl = parse_url($link->getAttribute('href'));
             $host  = $parseUrl['host'] ?? null;
             if ($host === $sourceDomain) {
-                $newLink = str_replace($host, $targetBaseUrl.'/kb/articles/aliases/'.$prefix, $link->getAttribute('href'));
+                $aliasPrefix = $targetBaseUrl.'/kb/articles/aliases/'.$prefix;
+                $newLink = str_replace($host, $aliasPrefix, $link->getAttribute('href'));
+                if ($newLink !== $host) {
+                    $kayakoArticlePath = '/index.php?/Knowledgebase/Article/View/';
+                    $replaceArticlePath = '/index.php%3F/Knowledgebase/Article/View/';
+                    $newLink = str_replace($aliasPrefix.$kayakoArticlePath, $aliasPrefix.$replaceArticlePath, $newLink);
+                }
                 $link->setAttribute('href', $newLink);
             }
         }
