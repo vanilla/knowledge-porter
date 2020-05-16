@@ -485,7 +485,7 @@ class VanillaDestination extends AbstractDestination {
     }
 
     /**
-     * Log information related to file rehosting headers.
+     * Log information related to file re-hosting headers.
      *
      * @param HttpResponse $response The response to check.
      */
@@ -562,8 +562,13 @@ class VanillaDestination extends AbstractDestination {
         $protocol = $this->config['protocol'] ?? 'https';
         $domain = $protocol."://$domain";
 
-        if ($config['api']['log'] ?? true) {
-            $this->vanillaApi->addMiddleware($this->container->get(HttpLogMiddleware::class));
+        if ($config['api']['log']) {
+            /** @var HttpLogMiddleware $middleware */
+            $middleware = $this->container->get(HttpLogMiddleware::class);
+            if ($config['api']['verbose']) {
+                $middleware->setLogBodies(true);
+            }
+            $this->vanillaApi->addMiddleware($middleware);
         }
 
         if ($config['api']['cache'] ?? true) {
@@ -673,6 +678,10 @@ class VanillaDestination extends AbstractDestination {
                     "log" => [
                         "type" => "boolean",
                         "default" => true,
+                    ],
+                    "verbose" => [
+                        "type" => "boolean",
+                        "default" => false,
                     ],
                     "cache" => [
                         "type" => "boolean",

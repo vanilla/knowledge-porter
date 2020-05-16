@@ -569,8 +569,13 @@ HTML;
         $domain = $this->config['domain'];
         $domain = "https://$domain";
 
-        if ($config['api']['log'] ?? true) {
-            $this->zendesk->addMiddleware($this->container->get(HttpLogMiddleware::class));
+        if ($config['api']['log']) {
+            /** @var HttpLogMiddleware $middleware */
+            $middleware = $this->container->get(HttpLogMiddleware::class);
+            if ($config['api']['verbose']) {
+                $middleware->setLogBodies(true);
+            }
+            $this->zendesk->addMiddleware($middleware);
         }
         if ($config['api']['cache'] ?? false) {
             $this->zendesk->addMiddleware($this->container->get(HttpCacheMiddleware::class));
@@ -673,6 +678,10 @@ HTML;
                     "log" => [
                         "type" => "boolean",
                         "default" => true,
+                    ],
+                    "verbose" => [
+                        "type" => "boolean",
+                        "default" => false,
                     ],
                     "cache" => [
                         "type" => "boolean",
