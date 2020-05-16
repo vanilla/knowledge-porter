@@ -1,4 +1,9 @@
 /vendor/
 ./tests/mocks/*
 /tests/cache/
-.idea
+cache/*
+.idea/*
+.DS_Store
+**/*.config.json
+**/custom
+**/custom*
