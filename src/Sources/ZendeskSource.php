@@ -221,7 +221,7 @@ class ZendeskSource extends AbstractSource {
                 'foreignID' => ["column" => 'id', "filter" => [$this, "addPrefix"]],
                 'userData' => ['column' => 'author_id', 'filter' => [$this, 'getUserData']],
                 'knowledgeCategoryID' => ["column" => 'section_id', "filter" => [$this, "addPrefix"]],
-                'format' => 'format',
+                'format' => ["placeholder" => 'wysiwyg'],
                 'locale' => ['column' => 'locale', 'filter' => [$this, 'getSourceLocale']],
                 'name' => 'name',
                 'body' => ['column' => 'body', 'filter' => [$this, 'prepareBody']],
@@ -246,11 +246,13 @@ class ZendeskSource extends AbstractSource {
                         'name' => 'title',
                         'body' => ['column' => 'body', 'filter' => [$this, 'prepareBody']],
                         'skip' => ['columns' => ['draft', 'user_segment_id'], 'filter' => [$this, 'setSkipStatus']],
+                        // Explicitly mapped insert to update.
+                        // Translations can only be added with an insert date.
                         'dateUpdated' => 'updated_at',
-                        'dateInserted' => 'created_at',
+                        'dateInserted' => 'updated_at',
                         'userData' => ['columns' => ['updated_by_id', 'created_by_id'], 'filter' => [$this, 'getUserUpdatedData']],
                     ]);
-                    $dest->importArticleTranslations($kbTranslations);
+                    $dest->importArticleTranslations($kbArticle['articleID'], $kbTranslations);
                 }
                 if ($this->config['import']['helpful'] ?? true) {
                     /** @var iterable $votes */
@@ -408,7 +410,8 @@ class ZendeskSource extends AbstractSource {
      * @return string
      */
     protected function getSourceLocale(string $sourceLocale): string {
-        $localeMapping = [
+        $configMapping = $this->config['localeMapping'] ?? [];
+        $localeMapping = $configMapping + [
             "en-gb" => "en_GB",
             "es-mx" => "es_MX",
             "fr-ca" => "fr_CA",
@@ -416,7 +419,7 @@ class ZendeskSource extends AbstractSource {
             "ms-my" => "ms_MY",
             "pt-br" => "pt_BR",
             "zh-tw" => "zh_TW",
-            "zh-za" => "zu_Za"
+            "zh-za" => "zu_Za",
         ];
 
         if (isset($localeMapping[$sourceLocale])) {
@@ -545,10 +548,12 @@ HTML;
     public function setSkipStatus(array $columns, array $row):string {
         $skip = 'false';
         if (in_array('draft', $columns) || in_array('user_segment_id', $columns)) {
-            if (array_key_exists('draft', $row) && $row['draft']) {
+            if ($row['draft'] ?? null) {
+                $this->logger->warning('Skipping item because it is a draft.');
                 $skip = 'true';
             }
             if ($row['user_segment_id'] ?? null) {
+                $this->logger->warning('Skipping item because it is has a `user_segment_id`.');
                 $skip = 'true';
             }
         }
@@ -673,6 +678,7 @@ HTML;
                     ],
                 ],
             ],
+            "localeMapping:o?",
             "api:o?" => [
                 "properties" => [
                     "log" => [
