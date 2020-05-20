@@ -703,7 +703,6 @@ class VanillaDestination extends AbstractDestination {
         switch ($updateMode) {
             case self::UPDATE_MODE_ALWAYS:
                 $res = $new;
-                die('');
                 break;
             case self::UPDATE_MODE_ON_CHANGE:
                 $res = $this->compareFields($existing, $new, $extra);
