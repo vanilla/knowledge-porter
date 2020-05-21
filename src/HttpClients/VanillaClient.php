@@ -21,6 +21,9 @@ class VanillaClient extends HttpClient {
      */
     private $token;
 
+    /** @var array */
+    private $categoryCacheByID;
+
     /**
      * VanillaClient constructor.
      *
@@ -90,8 +93,13 @@ class VanillaClient extends HttpClient {
      * @return array
      */
     public function getKnowledgeCategoryBySmartID(string $paramSmartID, array $query = []): array {
+        $existing = $this->categoryCacheByID[$paramSmartID] ?? null;
+        if ($existing) {
+            return $existing;
+        }
         $result = $this->get("/api/v2/knowledge-categories/".rawurlencode('$foreignID:'.$paramSmartID));
         $body = $result->getBody();
+        $this->categoryCacheByID[$paramSmartID] = $body;
         return $body;
     }
 

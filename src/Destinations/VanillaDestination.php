@@ -7,11 +7,14 @@
 
 namespace Vanilla\KnowledgePorter\Destinations;
 
+use Exception;
+use Garden\Cli\TaskLogger;
 use Garden\Http\HttpResponse;
 use Garden\Http\HttpResponseException;
 use Garden\Schema\Schema;
 use Garden\Schema\ValidationException;
 use Psr\Container\ContainerInterface;
+use Psr\Log\LogLevel;
 use Vanilla\KnowledgePorter\HttpClients\HttpCacheMiddleware;
 use Vanilla\KnowledgePorter\HttpClients\HttpLogMiddleware;
 use Vanilla\KnowledgePorter\HttpClients\HttpVanillaCloudRateLimitBypassMiddleware;
@@ -35,6 +38,9 @@ class VanillaDestination extends AbstractDestination {
         'name',
         'body',
         'featured',
+        'dateUpdated',
+        'dateInserted',
+        'format',
     ];
 
     const KB_EDIT_FIELDS = [
@@ -53,6 +59,7 @@ class VanillaDestination extends AbstractDestination {
     const ARTICLE_TRANSLATION_FIELDS = [
         'name',
         'body',
+        'format',
     ];
 
     const KB_CATEGORY_EDIT_FIELDS = [
@@ -98,7 +105,7 @@ class VanillaDestination extends AbstractDestination {
             try {
                 $existing = $this->vanillaApi->getKnowledgeBaseBySmartID($row["foreignID"]);
                 if ($this->config['patchKnowledgeBase'] ?? false) {
-                    $patch = $this->updateFields($existing, $row, self::KB_EDIT_FIELDS);
+                    $patch = $this->updateFields($existing, $row, self::KB_EDIT_FIELDS, "KB - ".$existing['knowledgeBaseID']);
                     if (!empty($patch)) {
                         $kb = $this->vanillaApi->patch('/api/v2/knowledge-bases/'.$existing['knowledgeBaseID'], $patch)->getBody();
                     }
@@ -139,36 +146,99 @@ class VanillaDestination extends AbstractDestination {
     }
 
     /**
-     * @param iterable $rows
+     * Import Knowledge Articles.
+     *
+     * @param int $articleID The article ID to import the translations for.
+     * @param iterable $rows The translated records to insert.
      */
-    public function importArticleTranslations(iterable $rows) {
+    public function importArticleTranslations(int $articleID, iterable $rows): void {
+        try {
+            $this->logger->beginInfo("Importing article translations for Article $articleID");
+            [$added, $updated, $skipped, $errors] = $this->importArticleTranslationsInternal($articleID, $rows);
+            $this->logger->end(
+                "Article Translations - Done (added: {added}, updated: {updated}, skipped: {skipped}, errors: {errors})",
+                ['added' => $added, 'updated' => $updated, 'skipped' => $skipped, 'errors' => $errors]
+            );
+        } catch (\Exception $ex) {
+            $this->logger->endError($ex->getMessage());
+        }
+    }
+
+
+    /**
+     * @param int $articleID The article ID to import the translations for.
+     * @param iterable $rows The translated records to insert.
+     *
+     * @return array [$added, $updated, $skipped]
+     */
+    private function importArticleTranslationsInternal(int $articleID, iterable $rows): array {
+        $added = $updated = $skipped = $errors = 0;
+        $existingTranslations = $this->vanillaApi->get("/api/v2/articles/$articleID/translations", [])->getBody();
+        // Check our source locale so we don't insert it again.
+        $sourceLocale = $existingTranslations[0]['sourceLocale'] ?? null;
+        if (!$sourceLocale) {
+            return [$added, $updated, $skipped, count($rows)];
+        }
+
+        $existingTranslationsByLocale = array_column($existingTranslations, null, 'locale');
         foreach ($rows as $row) {
             if (($row['skip'] ?? 'false') === 'true') {
+                $skipped++;
                 continue;
             }
-            $existing = $this->vanillaApi->get('/api/v2/articles/'.$row['articleID'].'?'.http_build_query(['locale' => $row['locale']]))->getBody();
-            $patch = $this->updateFields($existing, $row, self::ARTICLE_TRANSLATION_FIELDS);
-            if (!empty($patch)) {
-                // $row contains all fields needed for translation api
-                // $patch has only 'translation' field if
-                // we use $patch as trigger, but $row as a body for translation
-                if (!empty($row['userData'])) {
-                    $user = $this->getOrCreateUser($row['userData']);
-                    $row['updateUserID'] = $user['userID'];
-                    unset($row['userData']);
-                }
-                $row['validateLocale'] = false;
-                $rehostFileParams = [
-                    'fileRehosting' => [
-                        'enabled' => true,
-                        'requestHeaders' => $this->rehostHeaders,
-                    ],
-                ];
+            if ($row['locale'] === $sourceLocale) {
+                $skipped++;
+                continue;
+            }
 
-                $res = $this->vanillaApi->patch('/api/v2/articles/'.$row['articleID'], array_merge($row, $rehostFileParams));
-                $this->logRehostHeaders($res);
+            $existingTranslation = $existingTranslationsByLocale[$row['locale']] ?? null;
+            if ($existingTranslation === null) {
+                // Try to fetch it from the API.
+                try {
+                    $existingTranslation = $this->vanillaApi->get("/articles/".$articleID, [
+                        'only-translated' => true,
+                        'locale' => $row['locale'],
+                    ])->getBody();
+                } catch (NotFoundException $e) {
+                    $this->logger->warning('Tried to check for an existing translation, but it wasn\'t found. Proceeding to import translation.');
+                    $existingTranslation = [];
+                }
+            }
+
+            if (($existingTranslation['translationStatus'] ?? null) === "not-translated") {
+                $existingTranslation = [];
+            }
+
+            $patch = $this->updateFields($existingTranslation, $row, self::ARTICLE_TRANSLATION_FIELDS, "Article - $articleID - ".$row['locale'] );
+            if (empty($patch)) {
+                $skipped++;
+                continue;
+            }
+
+            // $row contains all fields needed for translation api
+            // $patch has only 'translation' field if
+            // we use $patch as trigger, but $row as a body for translation
+            if (!empty($row['userData'])) {
+                $user = $this->getOrCreateUser($row['userData']);
+                $row['updateUserID'] = $user['userID'];
+                unset($row['userData']);
+            }
+            $row['validateLocale'] = false;
+            $row['fileRehosting'] = [
+                'enabled' => true,
+                'requestHeaders' => $this->rehostHeaders,
+            ];
+
+            $res = $this->vanillaApi->patch('/api/v2/articles/'.$row['articleID'], $row);
+            $this->logRehostHeaders($res);
+
+            if (!empty($existingTranslation)) {
+                $updated++;
+            } else {
+                $added++;
             }
         }
+        return [$added, $updated, $skipped, $errors];
     }
 
     /**
@@ -267,7 +337,7 @@ class VanillaDestination extends AbstractDestination {
                 };
                 try {
                     $existing = $this->vanillaApi->getKnowledgeCategoryBySmartID($row["foreignID"]);
-                    $patch = $this->updateFields($existing, $row, self::KB_CATEGORY_EDIT_FIELDS);
+                    $patch = $this->updateFields($existing, $row, self::KB_CATEGORY_EDIT_FIELDS, 'knowledgeCategory - '.$existing['knowledgeCategoryID']);
                     $updated++;
                     if (!empty($patch)) {
                         $kbCat = $this->vanillaApi->patch(
@@ -380,13 +450,15 @@ class VanillaDestination extends AbstractDestination {
             if (($row['skip'] ?? '') === 'true') {
                 try {
                     $existingArticle = $this->vanillaApi->getKnowledgeArticleBySmartID($row["foreignID"]);
-                    $article = $this->vanillaApi->patch(
-                        '/api/v2/articles/'.$existingArticle['articleID'].'/status',
-                        ['status' => 'deleted']
-                    )->getBody()
-                    ;
+                    if ($existingArticle['status'] === 'published') {
+                        $this->vanillaApi->patch(
+                            '/api/v2/articles/' . $existingArticle['articleID'] . '/status',
+                            ['status' => 'deleted']
+                        )->getBody();
+                    }
                     $deleted++;
                 } catch (NotFoundException $ex) {
+                    $this->logger->info('Failed to delete foreign draft article. It was likely never imported.');
                     $skipped++;
                 }
                 continue;
@@ -427,7 +499,7 @@ class VanillaDestination extends AbstractDestination {
 
                         $undeleted++;
                     }
-                    $patch = $this->updateFields($existingArticle, $row, self::ARTICLE_EDIT_FIELDS);
+                    $patch = $this->updateFields($existingArticle, $row, self::ARTICLE_EDIT_FIELDS, 'Article - '.$existingArticle['articleID']);
                     if (!empty($patch)) {
                         if (!empty($user)) {
                             $patch['updateUserID'] = $user['userID'];
@@ -485,7 +557,7 @@ class VanillaDestination extends AbstractDestination {
     }
 
     /**
-     * Log information related to file rehosting headers.
+     * Log information related to file re-hosting headers.
      *
      * @param HttpResponse $response The response to check.
      */
@@ -562,8 +634,18 @@ class VanillaDestination extends AbstractDestination {
         $protocol = $this->config['protocol'] ?? 'https';
         $domain = $protocol."://$domain";
 
-        if ($config['api']['log'] ?? true) {
-            $this->vanillaApi->addMiddleware($this->container->get(HttpLogMiddleware::class));
+        $isVerbose = $config['api']['verbose'];
+        if ($isVerbose) {
+            $this->logger->setMinLevel(LogLevel::DEBUG);
+        }
+
+        if ($config['api']['log']) {
+            /** @var HttpLogMiddleware $middleware */
+            $middleware = $this->container->get(HttpLogMiddleware::class);
+            if ($isVerbose) {
+                $middleware->setLogBodies(true);
+            }
+            $this->vanillaApi->addMiddleware($middleware);
         }
 
         if ($config['api']['cache'] ?? true) {
@@ -612,9 +694,10 @@ class VanillaDestination extends AbstractDestination {
      * @param array $existing
      * @param array $new
      * @param array $extra
+     * @param string|null $skipLogName
      * @return array
      */
-    private function updateFields(array $existing, array $new, array $extra): array {
+    private function updateFields(array $existing, array $new, array $extra, ?string $skipLogName = null): array {
         $res = [];
         $updateMode = $this->config['update'] ?? self::UPDATE_MODE_ON_CHANGE;
         switch ($updateMode) {
@@ -628,9 +711,17 @@ class VanillaDestination extends AbstractDestination {
                 if ($existing[self::DATE_UPDATED] ?? 0) {
                     $existingDate = strtotime($existing[self::DATE_UPDATED]);
                     $newDate = strtotime($new[self::DATE_UPDATED]);
-                    $res = ($existingDate < $newDate) ? $new : [];
+                    $res = ($existingDate < $newDate) ? $this->compareFields($existing, $new, $extra) : [];
+                } else {
+                    $res = $this->compareFields($existing, $new, $extra);
                 }
                 break;
+            default:
+                die("Improper update mode. This should not occur");
+        }
+
+        if (empty($res) && $skipLogName) {
+            $this->logger->debug("Skipping update to item '$skipLogName' because no changes were detected.");
         }
 
         return $res;
@@ -673,6 +764,10 @@ class VanillaDestination extends AbstractDestination {
                     "log" => [
                         "type" => "boolean",
                         "default" => true,
+                    ],
+                    "verbose" => [
+                        "type" => "boolean",
+                        "default" => false,
                     ],
                     "cache" => [
                         "type" => "boolean",

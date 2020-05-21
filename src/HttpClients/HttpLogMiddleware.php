@@ -25,6 +25,9 @@ class HttpLogMiddleware {
      */
     private $logger;
 
+    /** @var bool */
+    private $logBodies = false;
+
     /**
      * HttpLogMiddleware constructor.
      *
@@ -32,6 +35,13 @@ class HttpLogMiddleware {
      */
     public function __construct(TaskLogger $logger) {
         $this->logger = $logger;
+    }
+
+    /**
+     * @param bool $logBodies
+     */
+    public function setLogBodies(bool $logBodies) {
+        $this->logBodies = $logBodies;
     }
 
     /**
@@ -52,6 +62,18 @@ class HttpLogMiddleware {
                 'method' => $request->getMethod(),
                 'url' => urldecode($request->getUrl()),
             ]);
+            if ($this->logBodies) {
+                $body = $request->getBody();
+                if ($body) {
+                    // Some requests contain an HTML body.
+                    // This clutters the logs significantly, and is normally of little use for debugging.
+                    // We replace it with a placeholder.
+                    if (isset($body['body'])) {
+                        $body['body'] = '<BODY />';
+                    }
+                    $this->logger->info(json_encode($body, JSON_PRETTY_PRINT));
+                }
+            }
             /* @var HttpResponse $response */
             $response = $next($request);
             $this->logger->endHttpStatus($response->getStatusCode());
