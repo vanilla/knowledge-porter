@@ -107,7 +107,6 @@ class KayakoXmlAdapter {
                 $row['kayakoArticleID'] = $articleID;
                 $row['categoryid'] = (string)$categoryid;
                 yield $row;
-                //break;
             }
 
         }
