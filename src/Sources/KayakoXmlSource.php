@@ -186,6 +186,7 @@ class KayakoXmlSource extends AbstractSource {
             'name' => 'subject',
             'body' => ['column' => 'contents', 'filter' => [$this, 'prepareBody']],
             'featured' => ['column' => 'isfeatured'],
+            'alias' => ['column' => 'kayakoArticleID', 'filter' => [$this, 'setAlias']],
             'dateUpdated' => ['column' => 'editeddateline', 'filter' => [$this, 'dateFormat']],
             'dateInserted' => ['column' => 'dateline', 'filter' => [$this, 'dateFormat']],
         ]);
@@ -195,6 +196,20 @@ class KayakoXmlSource extends AbstractSource {
         foreach ($kbArticles as $article) {
             $i++;
         }
+    }
+
+    /**
+     * Set Alias for Kayako Article.
+     *
+     * @param mixed $id
+     * @return string
+     * @todo Make sure to prefix with the prefix like: `<prefix>/<path>`. Hint: `parse_url()`.
+     */
+    protected function setAlias($articleID): string {
+        $prefix = ($this->config["foreignIDPrefix"] !== '') ?  '/'.$this->config["foreignIDPrefix"] : '';
+
+        $basePath = "$prefix/index.php%3F/Knowledgebase/Article/View/$articleID";
+        return $basePath;
     }
 
     /**
@@ -266,7 +281,13 @@ HTML;
             $parseUrl = parse_url($link->getAttribute('href'));
             $host  = $parseUrl['host'] ?? null;
             if ($host === $sourceDomain) {
-                $newLink = str_replace($host, $targetBaseUrl.'/kb/articles/aliases/'.$prefix, $link->getAttribute('href'));
+                $aliasPrefix = $targetBaseUrl.'/kb/articles/aliases/'.$prefix;
+                $newLink = str_replace($host, $aliasPrefix, $link->getAttribute('href'));
+                if ($newLink !== $host) {
+                    $kayakoArticlePath = '/index.php?/Knowledgebase/Article/View/';
+                    $replaceArticlePath = '/index.php%3F/Knowledgebase/Article/View/';
+                    $newLink = str_replace($aliasPrefix.$kayakoArticlePath, $aliasPrefix.$replaceArticlePath, $newLink);
+                }
                 $link->setAttribute('href', $newLink);
             }
         }
@@ -279,6 +300,29 @@ HTML;
         }
 
         return $innerHTML;
+    }
+
+    /**
+     * Add html elements with attachment links
+     *
+     * @param string $body
+     * @param array $article
+     * @return string
+     */
+    public function addAttachments(string $body, array $article): string {
+        $attachments = $this->kayakoXml->getArticleAttachments($article);
+
+        $dest = $this->getDestination();
+        foreach ($attachments as $attachment) {
+            $media = $dest->getOrCreateMedia($attachment);
+            $this->kayakoXml->saveAttachmentMedia('attachments/'.$attachment['kbarticleid'].'/'.$attachment['id'].'.json', json_encode($media), true);
+
+            $url = htmlspecialchars($media['url']);
+            $name = htmlspecialchars($media['name']);
+            $body .= '<p><a href="'.$url.'" download>'.$name.'</a></p>';
+        }
+
+        return $body;
     }
 
     /**

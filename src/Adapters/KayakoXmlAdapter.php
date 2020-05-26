@@ -104,10 +104,78 @@ class KayakoXmlAdapter {
             $categories = $article->xpath('categories/categoryid');
             foreach ($categories as $categoryid) {
                 $row['kbarticleid'] = $articleID.'-'.$categoryid;
+                $row['kayakoArticleID'] = $articleID;
                 $row['categoryid'] = (string)$categoryid;
                 yield $row;
             }
 
         }
+    }
+
+    /**
+     * Get article attachments from /attachments/**.xml
+     *
+     * @return iterable
+     */
+    public function getArticleAttachments(array $article): iterable {
+        $attachments = $article['attachments'];
+
+        foreach ($attachments->children() as $attachment) {
+            $idx = explode('-', $article['kbarticleid']);
+            $file = $this->getXml('/attachments/'.$idx[0].'/'.$attachment->id.'.xml');
+            $node = $file->xpath('//kbattachment/id[.="'.$attachment->id.'"]/parent::*')[0];
+            $path = $this->saveFile('attachments/'.$idx[0].'/'.$node->filename, $node->contents);
+            $media = $this->getMedia('/attachments/'.$idx[0].'/'.$attachment->id.'.json');
+            $res = (array)$node;
+            $res['filePath'] = $path;
+            $res['content_url'] = $media['url'] ?? '';
+            $res['display_file_name'] = $res['filename'];
+            yield $res;
+        }
+    }
+
+    /**
+     * Save attachment as a file
+     *
+     * @param string $file
+     * @param strin $content
+     * @return string
+     */
+    public function saveFile(string $file, string $content): string {
+        $file = ROOT_PATH.'/'.$this->baseDir.'/'.$file;
+        if (!file_exists($file)) {
+            file_put_contents($file, base64_decode($content));
+        }
+        return $file;
+    }
+
+    /**
+     * Save attachment media as a json file
+     *
+     * @param string $file
+     * @param strin $content
+     * @return string
+     */
+    public function saveAttachmentMedia(string $file, string $content, bool $force = false) {
+        $file = ROOT_PATH.'/'.$this->baseDir.'/'.$file;
+        if ($force || !file_exists($file)) {
+            file_put_contents($file, $content);
+        }
+    }
+
+    /**
+     * Get media structure saved as json file if exists.
+     *
+     * @param string $file
+     * @return array
+     */
+    public function getMedia(string $file): array {
+        $media = [];
+        $file = ROOT_PATH.'/'.$this->baseDir.'/'.$file;
+        if (file_exists($file)) {
+            $media = json_decode(file_get_contents($file), true);
+        }
+
+        return $media;
     }
 }

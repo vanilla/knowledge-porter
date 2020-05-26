@@ -28,6 +28,7 @@ try {
     $result = $main->run($argv);
 } catch (Throwable $t) {
     $exitCode = $t->getCode() === 0 ? 1 : $t->getCode();
+    echo $t->getMessage();
     exit($exitCode);
 }
 

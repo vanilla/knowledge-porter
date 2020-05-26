@@ -125,6 +125,56 @@ class VanillaDestination extends AbstractDestination {
     }
 
     /**
+     * POST media with file body attached as a multipart form data.
+     *
+     * @param array $attachment
+     * @return array
+     */
+    public function postMedia(array $attachment): array {
+        // form field separator
+        $delimiter = '-------------' . uniqid();
+        $data = '';
+
+        $data .= "--" . $delimiter . "\r\n";
+        $data .= 'Content-Disposition: form-data; name="file";' .
+            ' filename="' . $attachment['filename'] . '"' . "\r\n";
+        $data .= 'Content-Type: ' . $attachment['filetype'] . "\r\n";
+        $data .= "\r\n";
+        $data .= base64_decode($attachment['contents']) . "\r\n";
+        $data .= "--" . $delimiter . "--\r\n";
+
+        $headers = ['Content-Type' => 'multipart/form-data; boundary=' . $delimiter];
+
+        $media = $this->vanillaApi->post('/api/v2/media', $data, $headers)->getBody();
+
+        return $media;
+    }
+
+    /**
+     * @param array $attachment
+     * @return array
+     */
+    public function getOrCreateMedia(array $attachment): array {
+        $media = [];
+        if (!empty($attachment['content_url'])) {
+            try {
+                $response = $this->vanillaApi->get('/api/v2/media/by-url', ['url'=>$attachment['content_url']]);
+                if ($response->getStatus() === '200 OK') {
+                    $media = $response->getBody();
+                }
+            } catch (NotFoundException $e) {
+                ;
+            }
+        }
+        if (empty($media)) {
+            $media = $this->postMedia($attachment);
+        }
+        return $media;
+    }
+
+
+
+    /**
      * @param iterable $rows
      */
     public function importKnowledgeBaseTranslations(iterable $rows) {
@@ -532,7 +582,8 @@ class VanillaDestination extends AbstractDestination {
                         }
                         $added++;
                     } catch (\Throwable $t) {
-                        $this->logger->info('Failed to post article :'.json_encode($article));
+                        $this->logger->info('Failed to post article :'.json_encode($row));
+                        $this->logger->info($t->getMessage());
                         $failed++;
                     }
                 }
