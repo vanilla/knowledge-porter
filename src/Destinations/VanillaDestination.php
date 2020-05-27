@@ -503,7 +503,10 @@ class VanillaDestination extends AbstractDestination {
                         $this->logRehostHeaders($response);
                         $article = $response->getBody();
                         if (!is_null($alias)) {
-                            $this->vanillaApi->put('/api/v2/articles/' . $article['articleID'] . '/aliases', ["aliases" => [$alias]]);
+                            if (!is_array($alias)) {
+                                $alias = [$alias];
+                            }
+                            $this->vanillaApi->put('/api/v2/articles/' . $article['articleID'] . '/aliases', ["aliases" => $alias]);
                         }
                         if (isset($row['featured']) && $row['featured']) {
                             $this->putFeaturedArticle($article['articleID'], $row['featured']);
