@@ -205,11 +205,16 @@ class KayakoXmlSource extends AbstractSource {
      * @return string
      * @todo Make sure to prefix with the prefix like: `<prefix>/<path>`. Hint: `parse_url()`.
      */
-    protected function setAlias($articleID): string {
+    protected function setAlias($articleID, array $row): array {
+        $aliases =[];
         $prefix = ($this->config["foreignIDPrefix"] !== '') ?  '/'.$this->config["foreignIDPrefix"] : '';
 
-        $basePath = "$prefix/index.php%3F/Knowledgebase/Article/View/$articleID";
-        return $basePath;
+        $aliases[] = "$prefix/index.php%3F/Knowledgebase/Article/View/$articleID";
+
+        $slug = str_replace([' ', '/'], '-', trim(strtolower($row['subject'])));
+        $slug = str_replace(['(', ')'], '', $slug);
+        $aliases[] = "$prefix/index.php%3F/Knowledgebase/Article/View/$articleID/{$row['categoryid']}/$slug";
+        return $aliases;
     }
 
     /**
