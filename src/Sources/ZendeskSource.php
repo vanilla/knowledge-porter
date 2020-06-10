@@ -236,6 +236,10 @@ class ZendeskSource extends AbstractSource {
             $translate = $this->config['import']['translations'] ?? false;
             foreach ($kbArticles as $kbArticle) {
                 if ($translate) {
+                    if (!$kbArticle) {
+                        $this->logger->error("Skipping foreign article translations because the article failed to be created.");
+                        continue;
+                    }
                     /** @var iterable $translation */
                     $translation = $this->zendesk->getArticleTranslations($this->trimPrefix($kbArticle['foreignID']));
                     $kbTranslations = $this->transform($translation, [
