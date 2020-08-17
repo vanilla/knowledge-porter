@@ -13,21 +13,25 @@ Example:
 {
     "source": {
         "type": "zendesk",
+        "protocol": "http", // For local setup only
         "prefix": "{PREFIX}", // prefix to set foreign id on destination records
-        "baseUrl": "{ZENDESK_API_PATH}", // eg: https://customer1.zendesk.com/api/v2/
+        "domain": "{ZENDESK_API_DOMAIN}", // eg: help.gink.com
         "token": "{EMAIL_TOKEN}", // eg: dev@mail.com/token:xxQWERTYptodnoL
-        "targetDomain": "{NEW_DOMAIN_PATH}", // eg: https://dev.vanilla.localhost/kb/articles/aliases
-        "sourceDomain": "{OLD_DOMAIN_PATH}", // eg: https://customer1.zendesk.com
+        "targetDomain": "{NEW_DOMAIN_PATH}", // eg: dev.vanilla.localhost
         "perPage": 2,
         "pageFrom": 1,
         "pageTo": 100,
         "import": {
             "categories": true,
+            "retrySections": true,
             "sections": true,
+            "authors": true,
             "articles": true,
             "translations": true,
             "attachments": true,
-            "helpful": true
+            "helpful": true,
+            "userRestricted": false, //Will fetch user restricted articles
+            "draft": false // Will fetch drafts
         },
         "api": {
             "cache": true,
@@ -36,13 +40,13 @@ Example:
     },
     "destination": {
         "type": "vanilla",
-        "path": "./export",
-        "baseUrl": "{VANILLA_API_DESTINATION_INSTANCE}", // ex: https://dev.vanilla.localhost
+        "domain": "{VANILLA_API_DESTINATION_DOMAIN}", // ex: dev.vanilla.localhost
         "token": "va.{VANILLA_API_TOKEN}",
         "update": "onChange",
          "api": {
             "cache": false,
-            "log": true
+            "log": true,
+            "verbose": false // Display more informations for each request
         }
         // by default we don't want KB to be patched after 1st sync 
         // that will allow to avoid kb-url-slug update if edited on vanilla side
