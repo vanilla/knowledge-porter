@@ -205,7 +205,7 @@ class ZendeskSource extends AbstractSource {
             array_push($skipStatus, 'draft');
         }
 
-        if(!($this->config['import']['userRestricted'] ?? false)){
+        if (!($this->config['import']['userRestricted'] ?? false)) {
             array_push($skipStatus, 'user_segment_id');
         }
 
