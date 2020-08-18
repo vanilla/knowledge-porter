@@ -201,7 +201,7 @@ class ZendeskSource extends AbstractSource {
         [$pageLimit, $pageFrom, $pageTo] = $this->setPageLimits();
         $locale = $this->config['sourceLocale'] ?? self::DEFAULT_SOURCE_LOCALE;
         $skipStatus = [];
-        if(!($this->config['import']['draft'] ?? false)){
+        if (!($this->config['import']['draft'] ?? false)) {
             array_push($skipStatus, 'draft');
         }
 
