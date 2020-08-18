@@ -200,6 +200,14 @@ class ZendeskSource extends AbstractSource {
     private function processKnowledgeArticles() {
         [$pageLimit, $pageFrom, $pageTo] = $this->setPageLimits();
         $locale = $this->config['sourceLocale'] ?? self::DEFAULT_SOURCE_LOCALE;
+        $skipStatus = [];
+        if (!($this->config['import']['draft'] ?? false)) {
+            array_push($skipStatus, 'draft');
+        }
+
+        if (!($this->config['import']['userRestricted'] ?? false)) {
+            array_push($skipStatus, 'user_segment_id');
+        }
 
         for ($page = $pageFrom; $page <= $pageTo; $page++) {
             $queryParams = ['page' => $page, 'per_page' => $pageLimit];
@@ -227,7 +235,7 @@ class ZendeskSource extends AbstractSource {
                 'body' => ['column' => 'body', 'filter' => [$this, 'prepareBody']],
                 'featured' => ['column' => 'promoted'],
                 'alias' => ['column' => 'id', 'filter' => [$this, 'setAlias']],
-                'skip' => ['columns' => ['draft', 'user_segment_id'], 'filter' => [$this, 'setSkipStatus']],
+                'skip' => ['columns' => $skipStatus, 'filter' => [$this, 'setSkipStatus']],
                 'dateUpdated' => 'updated_at',
                 'dateInserted' => 'created_at',
             ]);
@@ -249,7 +257,7 @@ class ZendeskSource extends AbstractSource {
                         'locale' => ['column' => 'locale', 'filter' => [$this, 'getSourceLocale']],
                         'name' => 'title',
                         'body' => ['column' => 'body', 'filter' => [$this, 'prepareBody']],
-                        'skip' => ['columns' => ['draft', 'user_segment_id'], 'filter' => [$this, 'setSkipStatus']],
+                        'skip' => ['columns' => $skipStatus, 'filter' => [$this, 'setSkipStatus']],
                         // Explicitly mapped insert to update.
                         // Translations can only be added with an insert date.
                         'dateUpdated' => 'updated_at',
@@ -459,12 +467,18 @@ class ZendeskSource extends AbstractSource {
      * @param array $row
      * @return string
      */
-    protected function prepareBody(string $body, array $row): string {
-        $body = $this->parseUrls($body);
-        if ($this->config['import']['attachments'] ?? false) {
-            $body = $this->addAttachments($body, $row);
+    protected function prepareBody($body, array $row): string {
+
+        if(isset($body)){
+            $body = $this->parseUrls($body);
+            if ($this->config['import']['attachments'] ?? false) {
+                $body = $this->addAttachments($body, $row);
+            }
+            return $body;
+
+        } else {
+            return '';
         }
-        return $body;
     }
 
     /**
@@ -551,15 +565,15 @@ HTML;
      */
     public function setSkipStatus(array $columns, array $row):string {
         $skip = 'false';
-        if (in_array('draft', $columns) || in_array('user_segment_id', $columns)) {
-            if ($row['draft'] ?? null) {
-                $this->logger->warning('Skipping item because it is a draft.');
-                $skip = 'true';
-            }
-            if ($row['user_segment_id'] ?? null) {
-                $this->logger->warning('Skipping item because it is has a `user_segment_id`.');
-                $skip = 'true';
-            }
+
+        if (in_array('draft', $columns) && ($row['draft'] ?? null)) {
+            $this->logger->warning('Skipping item because it is a draft.');
+            $skip = 'true';
+        }
+
+        if (in_array('user_segment_id', $columns) && ($row['user_segment_id'] ?? null)) {
+            $this->logger->warning('Skipping item because it is has a `user_segment_id`.');
+            $skip = 'true';
         }
         return $skip;
     }
@@ -679,6 +693,14 @@ HTML;
                     "attachments" => [
                         "type" => "boolean",
                         "default" => true,
+                    ],
+                    "draft" => [
+                        "type" => "boolean",
+                        "default" => false,
+                    ],
+                    "userRestricted" => [
+                        "type" => "boolean",
+                        "default" => false,
                     ],
                 ],
             ],
