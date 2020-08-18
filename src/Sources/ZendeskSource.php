@@ -566,7 +566,7 @@ HTML;
     public function setSkipStatus(array $columns, array $row):string {
         $skip = 'false';
 
-        if (in_array('draft', $columns) && ($row['draft'] ?? null)){
+        if (in_array('draft', $columns) && ($row['draft'] ?? null)) {
             $this->logger->warning('Skipping item because it is a draft.');
             $skip = 'true';
         }
