@@ -571,7 +571,7 @@ HTML;
             $skip = 'true';
         }
 
-        if(in_array('user_segment_id', $columns) && ($row['user_segment_id'] ?? null)) {
+        if (in_array('user_segment_id', $columns) && ($row['user_segment_id'] ?? null)) {
             $this->logger->warning('Skipping item because it is has a `user_segment_id`.');
             $skip = 'true';
         }
