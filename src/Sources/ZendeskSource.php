@@ -687,11 +687,11 @@ HTML;
                         "type" => "boolean",
                         "default" => true,
                     ],
-                    "draft" => [
+                    "fetchDraft" => [
                         "type" => "boolean",
                         "default" => false,
                     ],
-                    "userRestricted" => [
+                    "fetchPrivateArticle" => [
                         "type" => "boolean",
                         "default" => false,
                     ],
