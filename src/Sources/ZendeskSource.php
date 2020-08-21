@@ -467,18 +467,11 @@ class ZendeskSource extends AbstractSource {
      * @param array $row
      * @return string
      */
-    protected function prepareBody($body, array $row): string {
-
-        if(isset($body)){
-            $body = $this->parseUrls($body);
-            if ($this->config['import']['attachments'] ?? false) {
-                $body = $this->addAttachments($body, $row);
-            }
-            return $body;
-
-        } else {
-            return '';
-        }
+    protected function prepareBody(string $body, array $row): string {
+        $body = $this->parseUrls($body);
+        if ($this->config['import']['attachments'] ?? false) {
+            $body = $this->addAttachments($body, $row);
+        return $body;    
     }
 
     /**
