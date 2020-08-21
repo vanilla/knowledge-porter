@@ -30,7 +30,7 @@ Example:
             "translations": true,
             "attachments": true,
             "helpful": true,
-            "fetchPrivateArticle": false,
+            "fetchPrivateArticles": false,
             "fetchDraft": false
         },
         "api": {

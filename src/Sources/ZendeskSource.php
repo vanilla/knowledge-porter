@@ -471,7 +471,8 @@ class ZendeskSource extends AbstractSource {
         $body = $this->parseUrls($body);
         if ($this->config['import']['attachments'] ?? false) {
             $body = $this->addAttachments($body, $row);
-        return $body;    
+            return $body;
+        }
     }
 
     /**
@@ -691,7 +692,7 @@ HTML;
                         "type" => "boolean",
                         "default" => false,
                     ],
-                    "fetchPrivateArticle" => [
+                    "fetchPrivateArticles" => [
                         "type" => "boolean",
                         "default" => false,
                     ],
