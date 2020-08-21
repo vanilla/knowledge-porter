@@ -201,11 +201,11 @@ class ZendeskSource extends AbstractSource {
         [$pageLimit, $pageFrom, $pageTo] = $this->setPageLimits();
         $locale = $this->config['sourceLocale'] ?? self::DEFAULT_SOURCE_LOCALE;
         $skipStatus = [];
-        if (!($this->config['import']['draft'] ?? false)) {
+        if (!($this->config['import']['fetchDraft'] ?? false)) {
             array_push($skipStatus, 'draft');
         }
 
-        if (!($this->config['import']['userRestricted'] ?? false)) {
+        if (!($this->config['import']['fetchPrivateArticles'] ?? false)) {
             array_push($skipStatus, 'user_segment_id');
         }
 
