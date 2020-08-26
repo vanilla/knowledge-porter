@@ -201,11 +201,11 @@ class ZendeskSource extends AbstractSource {
         [$pageLimit, $pageFrom, $pageTo] = $this->setPageLimits();
         $locale = $this->config['sourceLocale'] ?? self::DEFAULT_SOURCE_LOCALE;
         $skipStatus = [];
-        if (!($this->config['import']['draft'] ?? false)) {
+        if (!($this->config['import']['fetchDraft'] ?? false)) {
             array_push($skipStatus, 'draft');
         }
 
-        if (!($this->config['import']['userRestricted'] ?? false)) {
+        if (!($this->config['import']['fetchPrivateArticles'] ?? false)) {
             array_push($skipStatus, 'user_segment_id');
         }
 
@@ -467,17 +467,11 @@ class ZendeskSource extends AbstractSource {
      * @param array $row
      * @return string
      */
-    protected function prepareBody($body, array $row): string {
-
-        if(isset($body)){
-            $body = $this->parseUrls($body);
-            if ($this->config['import']['attachments'] ?? false) {
-                $body = $this->addAttachments($body, $row);
-            }
+    protected function prepareBody(string $body, array $row): string {
+        $body = $this->parseUrls($body);
+        if ($this->config['import']['attachments'] ?? false) {
+            $body = $this->addAttachments($body, $row);
             return $body;
-
-        } else {
-            return '';
         }
     }
 
@@ -694,11 +688,11 @@ HTML;
                         "type" => "boolean",
                         "default" => true,
                     ],
-                    "draft" => [
+                    "fetchDraft" => [
                         "type" => "boolean",
                         "default" => false,
                     ],
-                    "userRestricted" => [
+                    "fetchPrivateArticles" => [
                         "type" => "boolean",
                         "default" => false,
                     ],

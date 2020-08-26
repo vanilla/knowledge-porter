@@ -30,8 +30,8 @@ Example:
             "translations": true,
             "attachments": true,
             "helpful": true,
-            "userRestricted": false, //Will fetch user restricted articles
-            "draft": false // Will fetch drafts
+            "fetchPrivateArticles": false,
+            "fetchDraft": false
         },
         "api": {
             "cache": true,
