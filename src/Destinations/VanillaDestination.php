@@ -782,6 +782,13 @@ class VanillaDestination extends AbstractDestination {
     }
 
     /**
+     * @inheritDoc
+     */
+    public function getKnowledgeBaseBySmartID($foreignID):array {
+        return $this->vanillaApi->getKnowledgeBaseBySmartID($foreignID);
+    }
+
+    /**
      * Get schema for config.
      *
      * @return Schema
@@ -842,5 +849,73 @@ class VanillaDestination extends AbstractDestination {
                 "default" => false
             ],
         ]);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function deleteArchivedArticles(array $knowledgeBases, array $zenDeskArticles, string $prefix = '') {
+        $knowledgeBaseIDs = array_column($knowledgeBases, 'knowledgeBaseID');
+        $knowledgeCategories = [];
+        // 5. Grab all the knowledge categories associated with the ZenDesk kbs.
+        try {
+            $knowledgeCategories = $this->vanillaApi->getKnowledgeCategoriesByKnowledgeBaseID($knowledgeBaseIDs);
+        } catch (NotFoundException | HttpResponseException $ex) {
+            $this->logger->info("Unable to find knowledge categories");
+        }
+
+        $articles = [];
+        foreach ($knowledgeCategories as $knowledgeCategory) {
+            $articleCount = $knowledgeCategory['articleCount'] ?? 0;
+
+            if (!$articleCount) {
+                continue;
+            }
+
+            $knowledgeCategoryID = $knowledgeCategory["knowledgeCategoryID"] ?? null;
+            // 6. Retrieve all the articles from each kb category.
+
+            $results = [];
+            try {
+                $results = $this->vanillaApi->getKnowledgeArticleByKnowledgeCategoryID($knowledgeCategoryID);
+            } catch (NotFoundException | HttpResponseException $ex) {
+                $this->logger->info("Knowledge category # $knowledgeCategoryID not found.");
+            }
+
+            if (count($results) > 1) {
+                foreach ($results as $result) {
+                    $articles[] = $result;
+                }
+            } else {
+                $articles[] = reset($results);
+            }
+        }
+
+        $vanillaArticles = [];
+        if ($articles) {
+            foreach ($articles as &$article) {
+                $id = str_replace($prefix, '',  $article['foreignID']);
+                $vanillaArticles[$id] = $article['articleID'];
+            }
+
+            $zenDeskIDs = array_column($zenDeskArticles, 'id', 'id');
+            // 7. Compare the vanilla articles against the ZenDesk articles.
+            $diff = [];
+            foreach ($vanillaArticles as $key => $vanillaArticle) {
+                $exists = $zenDeskIDs[$key] ?? false;
+                if (!$exists) {
+                    // 8.  If no article exists on ZenDesk, update the status on Vanilla.
+                    try {
+                        $this->vanillaApi->updateKnowledgeArticleStatus($vanillaArticle);
+                    } catch (NotFoundException | HttpResponseException $ex) {
+                        $this->logger->info("Failed to set deleted status on article # $vanillaArticle");
+                    }
+                    $diff[] = $vanillaArticle;
+                    $this->logger->info("Article # $vanillaArticle status was set to deleted");
+                }
+            }
+            $numberOfArticlesDeleted = count($diff);
+            $this->logger->info("$numberOfArticlesDeleted articles were deleted.");
+        }
     }
 }

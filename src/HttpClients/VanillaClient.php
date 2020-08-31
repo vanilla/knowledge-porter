@@ -16,6 +16,8 @@ use Garden\Http\HttpResponseException;
  * The Vanilla API.
  */
 class VanillaClient extends HttpClient {
+
+    const DELETED_STATUS = 'deleted';
     /**
      * @var string
      */
@@ -131,6 +133,43 @@ class VanillaClient extends HttpClient {
         $body = $result->getBody();
         return $body;
     }
+
+    /**
+     * Get knowledge categories filtered by knowledge-id.
+     *
+     * @param array $ids
+     * @return array
+     */
+    public function getKnowledgeCategoriesByKnowledgeBaseID(array $ids): array {
+        $result = $this->get("/api/v2/knowledge-categories", ["knowledgeBaseIDs" => $ids]);
+        $body = $result->getBody();
+        return $body;
+    }
+
+    /**
+     * Get articles by their knowledge category id.
+     *
+     * @param int $id
+     * @return array
+     */
+    public function getKnowledgeArticleByKnowledgeCategoryID(int $id): array {
+        $result = $this->get("/api/v2/articles", ["knowledgeCategoryID" => $id]);
+        $body = $result->getBody();
+        return $body;
+    }
+
+    /**
+     * Update an Article's status.
+     *
+     * @param int $id
+     * @return array
+     */
+    public function updateKnowledgeArticleStatus(int $id): array {
+        $result = $this->patch("/api/v2/articles/$id/status", ["status" => self::DELETED_STATUS]);
+        $body = $result->getBody();
+        return $body;
+    }
+
 
     /**
      * @return string

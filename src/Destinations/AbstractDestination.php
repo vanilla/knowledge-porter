@@ -57,4 +57,21 @@ abstract class AbstractDestination implements TaskLoggerAwareInterface {
      * @param iterable $rows
      */
     abstract public function importKnowledgeArticles(iterable $rows): iterable;
+
+    /**
+     *
+     * @param string $foreignID
+     * @return array
+     */
+    abstract public function getKnowledgeBaseBySmartID(string $foreignID): array;
+
+    /**
+     * Delete archived articles.
+     *
+     * @param array $knowledgeBases
+     * @param array $articles
+     * @param string $prefix
+     */
+    abstract public function deleteArchivedArticles(array $knowledgeBases, array $articles, string $prefix);
+
 }

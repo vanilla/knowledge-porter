@@ -9,10 +9,14 @@ namespace Vanilla\KnowledgePorter\Sources;
 
 use DOMDocument;
 use DOMNode;
+use Garden\Container\Container;
+use Garden\Http\HttpResponseException;
 use Garden\Schema\Schema;
 use Psr\Container\ContainerInterface;
 use Vanilla\KnowledgePorter\Destinations\VanillaDestination;
 use Vanilla\KnowledgePorter\HttpClients\HttpLogMiddleware;
+use Vanilla\KnowledgePorter\HttpClients\NotFoundException;
+use Vanilla\KnowledgePorter\HttpClients\VanillaClient;
 use Vanilla\KnowledgePorter\HttpClients\ZendeskClient;
 use Vanilla\KnowledgePorter\HttpClients\HttpCacheMiddleware;
 
@@ -75,16 +79,21 @@ class ZendeskSource extends AbstractSource {
      * Execute import content actions
      */
     public function import(): void {
-        if ($this->config['import']['categories'] ?? true) {
-            $this->processKnowledgeBases();
-        }
+        $deleteModeEnabled = $this->config['import']['delete'] ?? false;
+        if ($deleteModeEnabled) {
+            $this->syncUpArchivedZendeskArticles();
+        } else {
+            if ($this->config['import']['categories'] ?? true) {
+                $this->processKnowledgeBases();
+            }
 
-        if ($this->config['import']['sections'] ?? true) {
-            $this->processKnowledgeCategories();
-        }
+            if ($this->config['import']['sections'] ?? true) {
+                $this->processKnowledgeCategories();
+            }
 
-        if ($this->config['import']['articles'] ?? true) {
-            $this->processKnowledgeArticles();
+            if ($this->config['import']['articles'] ?? true) {
+                $this->processKnowledgeArticles();
+            }
         }
     }
 
@@ -680,6 +689,10 @@ HTML;
                         "type" => "boolean",
                         "default" => true,
                     ],
+                    "delete" => [
+                        "type" => "boolean",
+                        "default" => false,
+                    ]
                 ],
             ],
             "localeMapping:o?",
@@ -759,5 +772,51 @@ HTML;
                 $dest->importKnowledgeBaseTranslations($kbTranslations);
             }
         };
+    }
+
+    /**
+     * Sync archived ZenDesk content with Vanilla.
+     */
+    private function syncUpArchivedZenDeskArticles() {
+        $this->logger->info('Delete mode enabled, all other import modes will not run during this process');
+        $locale = $this->config['sourceLocale'] ?? self::DEFAULT_SOURCE_LOCALE;
+
+        // 1. Grab all Zendesk articles.
+        $zenDeskArticles = $this->zendesk->getArticles($locale);
+        foreach ($zenDeskArticles as $key => $article) {
+            $draftStatus = $article['draft'] ?? false;
+            $hasUserSegment = $article['user_segment_id'] ?? false;
+             if (($draftStatus === true) || $hasUserSegment) {
+                 unset($zenDeskArticles[$key]);
+             }
+        }
+
+        // 2. Get all the ZenDesk kb's
+        $zenDeskKnowledgeBases = $this->zendesk->getCategories($locale);
+        $destination = $this->getDestination();
+        $count = [];
+        $knowledgeBases = [];
+        foreach ($zenDeskKnowledgeBases as $zenDeskKnowledgeBase) {
+            $id = $zenDeskKnowledgeBase['id'] ?? '';
+            $foreignID = $this->addPrefix($id);
+
+            // 3. Grab the Vanilla kb's linked by the foreign id.
+            try {
+                $knowledgeBase = $destination->getKnowledgeBaseBySmartID($foreignID);
+                $count[$foreignID] = $knowledgeBase['countArticles'] ?? 0;
+                $knowledgeBases[] = $knowledgeBase;
+            } catch (NotFoundException | HttpResponseException $ex) {
+                $this->logger->info("Knowledge-base with foreign ID # $foreignID not found");
+            }
+        }
+
+        $articleCount = array_sum($count);
+
+        // 4. Check if Vanilla's article count is less than that of ZenDesk.
+        if (count($zenDeskArticles) < $articleCount) {
+            $destination->deleteArchivedArticles($knowledgeBases, $zenDeskArticles, $this->config['foreignIDPrefix']);
+        } else {
+            $this->logger->info('No articles to delete');
+        }
     }
 }
