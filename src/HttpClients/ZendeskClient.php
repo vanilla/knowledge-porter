@@ -166,8 +166,7 @@ class ZendeskClient extends HttpClient {
         }
 
         $queryParams = empty($query) ? '' : '?'.http_build_query($query);
-        $results = $this->get($uri.$queryParams);
-        $results = $results->getBody();
+        $results = $this->get($uri.$queryParams)->getBody();
 
         foreach ($results['articles'] as &$article) {
             if (($article['locale'] ?? null) !== $locale) {
