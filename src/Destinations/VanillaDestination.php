@@ -20,6 +20,8 @@ use Vanilla\KnowledgePorter\HttpClients\HttpLogMiddleware;
 use Vanilla\KnowledgePorter\HttpClients\HttpVanillaCloudRateLimitBypassMiddleware;
 use Vanilla\KnowledgePorter\HttpClients\NotFoundException;
 use Vanilla\KnowledgePorter\HttpClients\VanillaClient;
+use Vanilla\KnowledgePorter\Utils\ApiPaginationIterator;
+
 
 /**
  * Class VanillaDestination
@@ -855,56 +857,52 @@ class VanillaDestination extends AbstractDestination {
      * @inheritDoc
      */
     public function deleteArchivedArticles(array $knowledgeBases, array $zenDeskArticles, string $prefix = '') {
-        $knowledgeBaseIDs = array_column($knowledgeBases, 'knowledgeBaseID');
-        $knowledgeCategories = [];
         // 5. Grab all the knowledge categories associated with the ZenDesk kbs.
+        $knowledgeBaseIDs = array_column($knowledgeBases, 'knowledgeBaseID');
         try {
             $knowledgeCategories = $this->vanillaApi->getKnowledgeCategoriesByKnowledgeBaseID($knowledgeBaseIDs);
         } catch (NotFoundException | HttpResponseException $ex) {
-            $this->logger->info("Unable to find knowledge categories");
+            $this->logger->error("Unable to find knowledge categories");
+            die("Can't proceed with clean up, not matching knowledge-categories found.");
         }
 
+        // 6. Retrieve all the articles from each kb category.
         $articles = [];
         foreach ($knowledgeCategories as $knowledgeCategory) {
             $articleCount = $knowledgeCategory['articleCount'] ?? 0;
 
-            if (!$articleCount) {
+            if ($articleCount === 0) {
                 continue;
             }
 
             $knowledgeCategoryID = $knowledgeCategory["knowledgeCategoryID"] ?? null;
-            // 6. Retrieve all the articles from each kb category.
 
             $results = [];
             try {
-                $results = $this->vanillaApi->getKnowledgeArticleByKnowledgeCategoryID($knowledgeCategoryID);
+                $results = $this->vanillaApi->getKnowledgeArticlesByKnowledgeCategoryID($knowledgeCategoryID);
             } catch (NotFoundException | HttpResponseException $ex) {
-                $this->logger->info("Knowledge category # $knowledgeCategoryID not found.");
+                $this->logger->info("Couldn't find articles matching knowledgeCategoryID # $knowledgeCategoryID");
             }
 
-            if (count($results) > 1) {
-                foreach ($results as $result) {
-                    $articles[] = $result;
-                }
-            } else {
-                $articles[] = reset($results);
+            foreach ($results as $result) {
+                $articles[] = $result;
             }
         }
-
+        // 7. Compare the vanilla articles against the ZenDesk articles.
         $vanillaArticles = [];
         if ($articles) {
             foreach ($articles as &$article) {
                 $id = str_replace($prefix, '',  $article['foreignID']);
                 $vanillaArticles[$id] = $article['articleID'];
             }
-
             $zenDeskIDs = array_column($zenDeskArticles, 'id', 'id');
-            // 7. Compare the vanilla articles against the ZenDesk articles.
+
             $diff = [];
             foreach ($vanillaArticles as $key => $vanillaArticle) {
                 $exists = $zenDeskIDs[$key] ?? false;
+
+                // 8.  If no article exists on ZenDesk, update the status on Vanilla.
                 if (!$exists) {
-                    // 8.  If no article exists on ZenDesk, update the status on Vanilla.
                     try {
                         $this->vanillaApi->updateKnowledgeArticleStatus($vanillaArticle);
                     } catch (NotFoundException | HttpResponseException $ex) {
@@ -914,6 +912,7 @@ class VanillaDestination extends AbstractDestination {
                     $this->logger->info("Article # $vanillaArticle status was set to deleted");
                 }
             }
+
             $numberOfArticlesDeleted = count($diff);
             $this->logger->info("$numberOfArticlesDeleted articles were deleted.");
         }

@@ -9,6 +9,7 @@ namespace Vanilla\KnowledgePorter\HttpClients;
 
 use Garden\Http\HttpClient;
 use Garden\Http\HttpHandlerInterface;
+use Vanilla\KnowledgePorter\Utils\ApiPaginationIterator;
 
 /**
  * The Zendesk API.
@@ -165,7 +166,8 @@ class ZendeskClient extends HttpClient {
         }
 
         $queryParams = empty($query) ? '' : '?'.http_build_query($query);
-        $results = $this->get($uri.$queryParams)->getBody();
+        $results = $this->get($uri.$queryParams);
+        $results = $results->getBody();
 
         foreach ($results['articles'] as &$article) {
             if (($article['locale'] ?? null) !== $locale) {
@@ -176,6 +178,54 @@ class ZendeskClient extends HttpClient {
             $article['body'] = $article['body'] ?? 'content-place-holder';
         }
         return $results['articles'] ?? [];
+    }
+
+    /**
+     * Get ZenDesk articles with pagination.
+     *
+     * @param string $locale
+     * @param array $query
+     * @return iterable
+     */
+    public function getArticlesWithPagination(string $locale, array $query = []): iterable {
+        $queryParams = empty($query) ? '' : '?'.http_build_query($query);
+        $uri = "/api/v2/help_center/$locale/articles.json".$queryParams;
+
+        /** @var ApiPaginationIterator $iterator */
+        $iterator = new ApiPaginationIterator($this, $uri.$queryParams);
+        $results = [];
+        foreach ($iterator as $item) {
+            $articles = $item['articles'] ?? [];
+            foreach ($articles as $article) {
+                $results[] = $article;
+            }
+        }
+
+        return $results ?? [];
+    }
+
+    /**
+     * Get ZenDesk categories with pagination.
+     *
+     * @param string $locale
+     * @param array $query
+     * @return iterable
+     */
+    public function getCategoriesWithPagination(string $locale, array $query = []): iterable {
+        $queryParams = empty($query) ? '' : '?'.http_build_query($query);
+        $uri = "/api/v2/help_center/$locale/categories.json".$queryParams;
+
+        /** @var ApiPaginationIterator $iterator */
+        $iterator = new ApiPaginationIterator($this, $uri);
+        $results = [];
+        foreach ($iterator as $item) {
+            $categories = $item['categories'] ?? [];
+            foreach ($categories as $category) {
+                $results[] = $category;
+            }
+        }
+
+        return $results ?? [];
     }
 
     /**

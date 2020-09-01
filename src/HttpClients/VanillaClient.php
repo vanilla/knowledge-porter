@@ -11,6 +11,7 @@ use Garden\Http\HttpClient;
 use Garden\Http\HttpHandlerInterface;
 use Garden\Http\HttpResponse;
 use Garden\Http\HttpResponseException;
+use Vanilla\KnowledgePorter\Utils\ApiPaginationIterator;
 
 /**
  * The Vanilla API.
@@ -141,9 +142,17 @@ class VanillaClient extends HttpClient {
      * @return array
      */
     public function getKnowledgeCategoriesByKnowledgeBaseID(array $ids): array {
-        $result = $this->get("/api/v2/knowledge-categories", ["knowledgeBaseIDs" => $ids]);
-        $body = $result->getBody();
-        return $body;
+        $url = '/api/v2/knowledge-categories?'.http_build_query(["knowledgeBaseIDs" => $ids]);
+
+        /** @var ApiPaginationIterator $iterator */
+        $iterator = new ApiPaginationIterator($this, $url);
+        $results = [];
+        foreach ($iterator as $item) {
+            foreach ($item as $i) {
+                $results[] = $i;
+            }
+        }
+        return $results;
     }
 
     /**
@@ -152,10 +161,18 @@ class VanillaClient extends HttpClient {
      * @param int $id
      * @return array
      */
-    public function getKnowledgeArticleByKnowledgeCategoryID(int $id): array {
-        $result = $this->get("/api/v2/articles", ["knowledgeCategoryID" => $id]);
-        $body = $result->getBody();
-        return $body;
+    public function getKnowledgeArticlesByKnowledgeCategoryID(int $id): array {
+        $url = '/api/v2/articles?'.http_build_query(["knowledgeCategoryID" => $id]);
+
+        /** @var ApiPaginationIterator $iterator */
+        $iterator = new ApiPaginationIterator($this, $url);
+        $results = [];
+        foreach ($iterator as $item) {
+            foreach ($item as $i) {
+                $results[] = $i;
+            }
+        }
+        return $results;
     }
 
     /**
