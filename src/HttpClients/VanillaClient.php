@@ -11,11 +11,14 @@ use Garden\Http\HttpClient;
 use Garden\Http\HttpHandlerInterface;
 use Garden\Http\HttpResponse;
 use Garden\Http\HttpResponseException;
+use Vanilla\KnowledgePorter\Utils\ApiPaginationIterator;
 
 /**
  * The Vanilla API.
  */
 class VanillaClient extends HttpClient {
+
+    const DELETED_STATUS = 'deleted';
     /**
      * @var string
      */
@@ -131,6 +134,59 @@ class VanillaClient extends HttpClient {
         $body = $result->getBody();
         return $body;
     }
+
+    /**
+     * Get knowledge categories filtered by knowledge-id.
+     *
+     * @param array $ids
+     * @return array
+     */
+    public function getKnowledgeCategoriesByKnowledgeBaseID(array $ids): array {
+        $url = '/api/v2/knowledge-categories?'.http_build_query(["knowledgeBaseIDs" => $ids]);
+
+        /** @var ApiPaginationIterator $iterator */
+        $iterator = new ApiPaginationIterator($this, $url);
+        $results = [];
+        foreach ($iterator as $item) {
+            foreach ($item as $i) {
+                $results[] = $i;
+            }
+        }
+        return $results;
+    }
+
+    /**
+     * Get articles by their knowledge category id.
+     *
+     * @param int $id
+     * @return array
+     */
+    public function getKnowledgeArticlesByKnowledgeCategoryID(int $id): array {
+        $url = '/api/v2/articles?'.http_build_query(["knowledgeCategoryID" => $id]);
+
+        /** @var ApiPaginationIterator $iterator */
+        $iterator = new ApiPaginationIterator($this, $url);
+        $results = [];
+        foreach ($iterator as $item) {
+            foreach ($item as $i) {
+                $results[] = $i;
+            }
+        }
+        return $results;
+    }
+
+    /**
+     * Update an Article's status.
+     *
+     * @param int $id
+     * @return array
+     */
+    public function updateKnowledgeArticleStatus(int $id): array {
+        $result = $this->patch("/api/v2/articles/$id/status", ["status" => self::DELETED_STATUS]);
+        $body = $result->getBody();
+        return $body;
+    }
+
 
     /**
      * @return string
