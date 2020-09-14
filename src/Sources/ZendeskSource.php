@@ -478,6 +478,7 @@ class ZendeskSource extends AbstractSource {
             $body = $this->addAttachments($body, $row);
             return $body;
         }
+        return $body;
     }
 
     /**
@@ -696,7 +697,7 @@ HTML;
                     "delete" => [
                         "type" => "boolean",
                         "default" => false,
-                    ]
+                    ],
                     "fetchDraft" => [
                         "type" => "boolean",
                         "default" => false,
