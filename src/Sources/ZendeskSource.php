@@ -478,7 +478,7 @@ class ZendeskSource extends AbstractSource {
             $body = $this->addAttachments($body, $row);
             return $body;
         }
-        return '';
+        return $body;
     }
 
     /**
