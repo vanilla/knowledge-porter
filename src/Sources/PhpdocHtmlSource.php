@@ -204,6 +204,7 @@ class PhpdocHtmlSource extends AbstractSource {
                 $content = file_get_contents($filename);
                 $parts = explode('.', $file);
                 $ext = array_pop($parts);
+                $alias = '/' . implode('.', $parts);
                 if('html' === strtolower($ext)){
                     $name = array_pop($parts);
                     $foreignID = $this->dot($this->foreignID . '-root', $parts, $name);
@@ -220,7 +221,7 @@ class PhpdocHtmlSource extends AbstractSource {
                         'locale' => $this->locale,
                         'name' => $name,
                         'body' => $content,
-                        'alias' => $file,
+                        'alias' => $alias,
                         'dateUpdated' => $this->dateFormat(time())
                     ];
                 }
