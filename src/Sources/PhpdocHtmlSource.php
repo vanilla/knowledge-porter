@@ -55,6 +55,11 @@ class PhpdocHtmlSource extends AbstractSource {
      */
     private $sortArticles;
 
+    /**
+     * @var string
+     */
+    private $noNamespaceID;
+
 
     /**
      * VanillaSource constructor.
@@ -114,7 +119,8 @@ class PhpdocHtmlSource extends AbstractSource {
      */
     private function processKnowledgeCategories() {
 
-        $files = scandir($this->path($this->sourcePath, 'classes'));
+        $files = $this->getMassagedFile();
+        $insertCategories = [];
         $this->buildCategories($files);
         foreach($this->categories as $k => $v){
             $this->insertCategory($k, $v, $insertCategories);
@@ -128,9 +134,29 @@ class PhpdocHtmlSource extends AbstractSource {
         $this->logger->info($i.' knowledge categories imported successfully');
     }
 
+    private function getMassagedFile()
+    {
+        $files = scandir($this->path($this->sourcePath, 'classes'));
+        foreach($files as &$file){
+            if(strpos($file, 'Gdn_') === 0){
+                $oldName = $file;
+                $file = 'Gdn.' . substr($file, 4);
+                rename(
+                    $this->path($this->sourcePath, 'classes', $oldName),
+                    $this->path($this->sourcePath, 'classes', $file)
+                );
+            }
+        }
+        return $files;
+    }
+
     private function buildCategories(array $files)
     {
+        $createNoNamespaceCategory = false;
         foreach($files as $file){
+            if(strpos($file, 'Gdn_') === 0){
+                $file = 'Gdn.' . substr($file, 4);
+            }
             $parts = explode('.', $file);
             if(count($parts) > 2 && 'html' === strtolower($parts[count($parts)-1])){
                 $keys = array_slice($parts, 0 , -2);
@@ -150,7 +176,12 @@ class PhpdocHtmlSource extends AbstractSource {
 
                 }
                 $this->categories = array_merge_recursive($this->categories, $branch);
+            }else{
+                $createNoNamespaceCategory = true;
             }
+        }
+        if($createNoNamespaceCategory){
+            $this->categories = array_merge_recursive($this->categories, $this->createNoNamespaceCategory());
         }
         $this->filterCategories($this->categories);
     }
@@ -168,6 +199,18 @@ class PhpdocHtmlSource extends AbstractSource {
                 $v = null;
             }
         }
+    }
+
+    private function createNoNamespaceCategory()
+    {
+        return [
+            'foreignID' => $this->noNamespaceID,
+            'knowledgeBaseID' => '$foreignID:' . $this->foreignID,
+            'parentID' => '$foreignID:' . $this->foreignID . '-root',
+            'name' => '[no namespace]',
+            'sourceParentID' => '$foreignID:' . $this->foreignID . '-root',
+            'rootCategory' => 'false',
+        ];
     }
 
     private function insertCategory($category, $node, &$categories, $parentID = null)
@@ -211,7 +254,7 @@ class PhpdocHtmlSource extends AbstractSource {
                     $foreignID = $this->sanitizeForiegnID($foreignID);
                     $knowledgeCategoryID = $this->dot($this->foreignID . '-root', $parts);
                     if(empty($parts)){
-                        $knowledgeCategoryID = $this->foreignID . '-root';
+                        $knowledgeCategoryID = $this->noNamespaceID;
                     }
                     $knowledgeCategoryID = $this->sanitizeForiegnID($knowledgeCategoryID);
                     $articles[] = [
@@ -266,6 +309,7 @@ class PhpdocHtmlSource extends AbstractSource {
         $this->format = $this->config['importSettings']['format'];
         $this->viewType = $this->config['importSettings']['viewType'];
         $this->sortArticles = $this->config['importSettings']['sortArticles'];
+        $this->noNamespaceID = $this->dot($this->foreignID . '-root', '\\');
     }
 
     private function path(): string {
