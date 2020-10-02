@@ -8,17 +8,15 @@
 namespace Vanilla\KnowledgePorter\Sources;
 
 use Vanilla\KnowledgePorter\HttpClients\VanillaClient;
+use Vanilla\KnowledgePorter\Utils\Helpers;
 
 /**
- * Class VanillaSource
+ * Class PhpdocHtmlSource
  * @package Vanilla\KnowledgePorter\Sources
  */
 class PhpdocHtmlSource extends AbstractSource {
+
     const DEFAULT_SOURCE_LOCALE = 'en';
-    /**
-     * @var VanillaClient
-     */
-    private $vanillaApi;
 
     /**
      * @var array
@@ -33,22 +31,17 @@ class PhpdocHtmlSource extends AbstractSource {
     /**
      * @var string
      */
-    private $locale;
-
-    /**
-     * @var string
-     */
-    private $sourcePath;
-
-    /**
-     * @var string
-     */
     private $format;
 
     /**
      * @var string
      */
-    private $viewType;
+    private $locale;
+
+    /**
+     * @var string
+     */
+    private $noNamespaceID;
 
     /**
      * @var string
@@ -58,15 +51,45 @@ class PhpdocHtmlSource extends AbstractSource {
     /**
      * @var string
      */
-    private $noNamespaceID;
+    private $sourcePath;
 
+    /**
+     * @var VanillaClient
+     */
+    private $vanillaApi;
+
+    /**
+     * @var string
+     */
+    private $viewType;
 
     /**
      * VanillaSource constructor.
      * @param VanillaClient $vanilla
      */
-    public function __construct(VanillaClient $vanilla) {
+    public function __construct(VanillaClient $vanilla)
+    {
         $this->vanillaApi = $vanilla;
+    }
+
+    /**
+     * Vanilla does not have any need for rehosting headers.
+     * @return array
+     */
+    public function getFileRehostingHeaders(): array
+    {
+        return [];
+    }
+
+    /**
+     * Execute import content actions
+     */
+    public function import(): void
+    {
+        $this->loadConfigs();
+        $this->processKnowledgeBase();
+        $this->processKnowledgeCategories();
+        $this->processKnowledgeArticles();
     }
 
     /**
@@ -74,89 +97,30 @@ class PhpdocHtmlSource extends AbstractSource {
      *
      * @param string $basePath
      */
-    public function setBasePath(string $basePath) {
+    public function setBasePath(string $basePath): void
+    {
         $this->basePath = $basePath;
     }
 
     /**
-     * Execute import content actions
-     */
-    public function import(): void {
-
-        $this->loadConfigs();
-
-        $this->processKnowledgeBases();
-        $this->processKnowledgeCategories();
-        $this->processKnowledgeArticles();
-    }
-
-    /**
-     * Process: import knowledgeBases.xml, POST/PATCH vanilla knowledge bases
-     */
-    private function processKnowledgeBases() {
-        $kbs = [
-            [
-                'foreignID' => $this->foreignID,
-                'name' => $this->config['name'],
-                'description' => $this->config['description'],
-                'urlCode' => $this->config['urlCode'],
-                'sourceLocale' => $this->locale,
-                'viewType' => $this->viewType,
-                'sortArticles' => $this->sortArticles,
-                'dateUpdated' => $this->dateFormat(time()),
-                'generateRootCategoryForeignID' => 'true',
-            ]
-        ];
-        foreach ($this->getDestination()->importKnowledgeBases($kbs) as $kb) {
-            $this->logger->info('Knowledge base "'.$kb['name'].'" imported successfully');
-        }
-    }
-
-    /**
-     * Process: import knowledgeCategories.xml, POST/PATCH vanilla knowledge categories
+     * Set config
      *
-     * @return iterable
+     * @param array $config
      */
-    private function processKnowledgeCategories() {
-
-        $files = $this->getMassagedFile();
-        $insertCategories = [];
-        $this->buildCategories($files);
-        foreach($this->categories as $k => $v){
-            $this->insertCategory($k, $v, $insertCategories);
-        }
-
-        $kbCategories = $this->getDestination()->importKnowledgeCategories($insertCategories);
-        $i = 0;
-        foreach($kbCategories as $kbCat){
-            $i++;
-        }
-        $this->logger->info($i.' knowledge categories imported successfully');
-    }
-
-    private function getMassagedFile()
+    public function setConfig(array $config): void
     {
-        $files = scandir($this->path($this->sourcePath, 'classes'));
-        foreach($files as &$file){
-            if(strpos($file, 'Gdn_') === 0){
-                $oldName = $file;
-                $file = 'Gdn.' . substr($file, 4);
-                rename(
-                    $this->path($this->sourcePath, 'classes', $oldName),
-                    $this->path($this->sourcePath, 'classes', $file)
-                );
-            }
-        }
-        return $files;
+        $this->config = $config;
     }
 
-    private function buildCategories(array $files)
+    /**
+     * Builds the category objects to be inserted
+     *
+     * @param array $files - the list of file names.
+     */
+    private function buildCategories(array $files): void
     {
         $createNoNamespaceCategory = false;
         foreach($files as $file){
-            if(strpos($file, 'Gdn_') === 0){
-                $file = 'Gdn.' . substr($file, 4);
-            }
             $parts = explode('.', $file);
             if(count($parts) > 2 && 'html' === strtolower($parts[count($parts)-1])){
                 $keys = array_slice($parts, 0 , -2);
@@ -183,25 +147,15 @@ class PhpdocHtmlSource extends AbstractSource {
         if($createNoNamespaceCategory){
             $this->categories = array_merge_recursive($this->categories, $this->createNoNamespaceCategory());
         }
-        $this->filterCategories($this->categories);
+        $this->categories = $this->filterCategories($this->categories);
     }
 
-    private function filterCategories(&$categories)
-    {
-        foreach($categories as $k => &$v){
-            if(is_null($v) && is_numeric($k)){
-                unset($categories[$k]);
-            }
-            if(is_array($v)){
-                $this->filterCategories($v);
-            }
-            if(empty($v)){
-                $v = null;
-            }
-        }
-    }
-
-    private function createNoNamespaceCategory()
+    /**
+     * Creates a single category for all classes with no namespace.
+     *
+     * @return array
+     */
+    private function createNoNamespaceCategory(): array
     {
         return [
             'foreignID' => $this->noNamespaceID,
@@ -213,14 +167,90 @@ class PhpdocHtmlSource extends AbstractSource {
         ];
     }
 
-    private function insertCategory($category, $node, &$categories, $parentID = null)
+    /**
+     * Traverses category objects and removes any empty ones. Should be used before writing to API.
+     *
+     * @param $categories - the built categories to be inserted.
+     * @return array
+     */
+    private function filterCategories($categories): array
+    {
+        foreach($categories as $k => &$v){
+            if(is_null($v) && is_numeric($k)){
+                unset($categories[$k]);
+            }
+            if(is_array($v)){
+                $v = $this->filterCategories($v);
+            }
+            if(empty($v)){
+                $v = null;
+            }
+        }
+
+        return array_values($categories);
+    }
+
+    /**
+     * Gets the Knowledge Base details for import
+     *
+     * @return array[]
+     */
+    private function getKnowledgeBaseConfig(): array
+    {
+        return [
+            [
+                'foreignID' => $this->foreignID,
+                'name' => $this->config['name'],
+                'description' => $this->config['description'],
+                'urlCode' => $this->config['urlCode'],
+                'sourceLocale' => $this->locale,
+                'viewType' => $this->viewType,
+                'sortArticles' => $this->sortArticles,
+                'dateUpdated' => Helpers::dateFormat(time()),
+                'generateRootCategoryForeignID' => 'true',
+            ]
+        ];
+    }
+
+    /**
+     * Massage certain file names.
+     *
+     * As a special request, classes that are prefixed with `Gdn_` are treated as if the were under a "Gdn" namespace.
+     *
+     * @return array|false
+     */
+    private function getMassagedFiles(): array
+    {
+        $files = scandir(Helpers::path($this->sourcePath, 'classes'));
+        foreach($files as &$file){
+            if(strpos($file, 'Gdn_') === 0){
+                $oldName = $file;
+                $file = 'Gdn.' . substr($file, 4);
+                rename(
+                    Helpers::path($this->sourcePath, 'classes', $oldName),
+                    Helpers::path($this->sourcePath, 'classes', $file)
+                );
+            }
+        }
+        return $files;
+    }
+
+    /**
+     * Prepares a category to be passed off to the API for insertion.
+     *
+     * @param string $category - the name of the category
+     * @param array $node - the array object of the category that may contain children
+     * @param array $categories - the array of API-insertable categories
+     * @param string|null $parentID - the ID of the category's parent, if applicable
+     */
+    private function insertCategory(string $category, $node, array &$categories, string $parentID = null): void
     {
         if(is_null($parentID)){
             $parentID = $this->foreignID . '-root';
         }
 
-        $foreignID = $this->dot($parentID, $category);
-        $foreignID = $this->sanitizeForiegnID($foreignID);
+        $foreignID = Helpers::dot($parentID, $category);
+        $foreignID = Helpers::rtruncate($foreignID);
         $categories[] = [
             'foreignID' => $foreignID,
             'knowledgeBaseID' => '$foreignID:' . $this->foreignID,
@@ -236,13 +266,30 @@ class PhpdocHtmlSource extends AbstractSource {
         }
     }
 
-    private function processKnowledgeArticles()
+    /**
+     * Load the configs to this Source object
+     */
+    private function loadConfigs(): void
+    {
+        $this->foreignID = $this->config['foreignID'];
+        $this->sourcePath = $this->config['path'];
+        $this->locale = $this->config['sourceLocale'] ?? self::DEFAULT_SOURCE_LOCALE;
+        $this->format = $this->config['importSettings']['format'];
+        $this->viewType = $this->config['importSettings']['viewType'];
+        $this->sortArticles = $this->config['importSettings']['sortArticles'];
+        $this->noNamespaceID = Helpers::dot($this->foreignID . '-root', '\\');
+    }
+
+    /**
+     * Inserts all articles into their respective categories.
+     */
+    private function processKnowledgeArticles(): void
     {
         $filePath = 'classes';
         $articles = [];
-        $files = scandir($this->path($this->sourcePath, $filePath));
+        $files = scandir(Helpers::path($this->sourcePath, $filePath));
         foreach($files as $file){
-            $filename = $this->path($this->sourcePath, $filePath, $file);
+            $filename = Helpers::path($this->sourcePath, $filePath, $file);
             if(is_file($filename)){
                 $content = file_get_contents($filename);
                 $parts = explode('.', $file);
@@ -250,13 +297,13 @@ class PhpdocHtmlSource extends AbstractSource {
                 $alias = '/' . implode('.', $parts);
                 if('html' === strtolower($ext)){
                     $name = array_pop($parts);
-                    $foreignID = $this->dot($this->foreignID . '-root', $parts, $name);
-                    $foreignID = $this->sanitizeForiegnID($foreignID);
-                    $knowledgeCategoryID = $this->dot($this->foreignID . '-root', $parts);
+                    $foreignID = Helpers::dot($this->foreignID . '-root', $parts, $name);
+                    $foreignID = Helpers::rtruncate($foreignID);
+                    $knowledgeCategoryID = Helpers::dot($this->foreignID . '-root', $parts);
                     if(empty($parts)){
                         $knowledgeCategoryID = $this->noNamespaceID;
                     }
-                    $knowledgeCategoryID = $this->sanitizeForiegnID($knowledgeCategoryID);
+                    $knowledgeCategoryID = Helpers::rtruncate($knowledgeCategoryID);
                     $articles[] = [
                         'foreignID' => $foreignID,
                         'knowledgeCategoryID' => $knowledgeCategoryID,
@@ -265,82 +312,44 @@ class PhpdocHtmlSource extends AbstractSource {
                         'name' => $name,
                         'body' => $content,
                         'alias' => $alias,
-                        'dateUpdated' => $this->dateFormat(time())
+                        'dateUpdated' => Helpers::dateFormat(time())
                     ];
                 }
             }
         }
         $kbArticles = $this->getDestination()->importKnowledgeArticles($articles);
-        $i = 0;
-        foreach ($kbArticles as $article) {
-            $i++;
-        }
+        iterator_count($kbArticles);
     }
+
     /**
-     * Vanilla does not have any need for rehosting headers.
-     * @return array
+     * Import knowledge base from config
      */
-    public function getFileRehostingHeaders(): array
+    private function processKnowledgeBase(): void
     {
-        return [];
+        $kbs = $this->getKnowledgeBaseConfig();
+        foreach ($this->getDestination()->importKnowledgeBases($kbs) as $kb) {
+            $this->logger->info('Knowledge base "'.$kb['name'].'" imported successfully');
+        }
     }
 
     /**
-     * Set config
+     * Import knowledge bases categories from HTML
      *
-     * @param array $config
+     * Reads all files from the source directory and uses the files names to create categories. Categories reflect
+     * the class namespaces and are derived from the file name (using dot notation).
      */
-    public function setConfig(array $config): void {
-        $this->config = $config;
-    }
-
-    protected function dateFormat(int $date): string {
-        return date(DATE_ATOM, $date);
-    }
-
-    private function sanitizeForiegnID(string $input, int $length = 32) : string {
-        return substr($input, ($length * -1), $length);
-    }
-
-    private function loadConfigs(): void {
-        $this->foreignID = $this->config['foreignID'];
-        $this->sourcePath = $this->config['path'];
-        $this->locale = $this->config['sourceLocale'] ?? self::DEFAULT_SOURCE_LOCALE;
-        $this->format = $this->config['importSettings']['format'];
-        $this->viewType = $this->config['importSettings']['viewType'];
-        $this->sortArticles = $this->config['importSettings']['sortArticles'];
-        $this->noNamespaceID = $this->dot($this->foreignID . '-root', '\\');
-    }
-
-    private function path(): string {
-        $args = func_get_args();
-        foreach($args as $i => &$arg){
-            if(0 === $i){
-                $arg = rtrim($arg, DIRECTORY_SEPARATOR);
-            }else{
-                $arg = trim($arg, DIRECTORY_SEPARATOR);
-            }
+    private function processKnowledgeCategories(): void
+    {
+        $files = $this->getMassagedFiles();
+        $insertCategories = [];
+        $this->buildCategories($files);
+        foreach($this->categories as $k => $v){
+            $this->insertCategory($k, $v, $insertCategories);
         }
-        return implode(DIRECTORY_SEPARATOR, $args);
+
+        $kbCategories = $this->getDestination()->importKnowledgeCategories($insertCategories);
+        $count = iterator_count($kbCategories);
+        $this->logger->info($count.' knowledge categories imported successfully');
     }
 
-    private function dot(): string {
-        $args = func_get_args();
-        $values = [];
-        foreach($args as $arg){
-            if(is_array($arg)){
-                $arg = array_filter($arg);
-                foreach($arg as $v){
-                    if(is_string($v) || is_numeric($v)){
-                        $values[] = $v;
-                    }elseif(is_array($v)){
-                        $values[] = $this->dot($v);
-                    }
-                }
-            }elseif(is_string($arg) || is_numeric($arg)){
-                $values[] = $arg;
-            }
-        }
-        return implode('.', $values);
-    }
 }
