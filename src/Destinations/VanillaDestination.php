@@ -348,7 +348,6 @@ class VanillaDestination extends AbstractDestination {
     public function importKnowledgeCategories(iterable $rows): iterable {
         try {
             $this->logger->beginInfo("Importing knowledge categories");
-
             return $this->importKnowledgeCategoriesInternal($rows);
         } catch (\Exception $ex) {
             $this->logger->endError($ex->getMessage());
@@ -399,7 +398,7 @@ class VanillaDestination extends AbstractDestination {
                         ;
                     }
                 } catch (NotFoundException | HttpResponseException $ex) {
-                    if ($ex->getCode() === 500) {
+                    if ($ex->getCode() === 500 || $ex->getCode() === 409) {
                         $row['failed'] = true;
                         self::$kbcats[] = $row;
                         $failures++;
