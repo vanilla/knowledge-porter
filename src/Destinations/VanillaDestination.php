@@ -112,7 +112,11 @@ class VanillaDestination extends AbstractDestination {
                         $kb = $this->vanillaApi->patch('/api/v2/knowledge-bases/'.$existing['knowledgeBaseID'], $patch)->getBody();
                     }
                 }
-            } catch (NotFoundException $ex) {
+            } catch (NotFoundException | HttpResponseException $ex) {
+                if ($ex->getCode() === 409) {
+                    $this->logger->warning($ex->getMessage() . " failed to import knowledge-base");
+                    continue;
+                }
                 $kb = $this->vanillaApi->post('/api/v2/knowledge-bases', $row)->getBody();
             }
             $kb = $kb ?? $existing;
@@ -402,6 +406,7 @@ class VanillaDestination extends AbstractDestination {
                         $row['failed'] = true;
                         self::$kbcats[] = $row;
                         $failures++;
+                        $this->logger->warning($ex->getMessage() . ' failed to import knowledge-category.');
                         continue;
                     } else {
                         try {
@@ -508,7 +513,7 @@ class VanillaDestination extends AbstractDestination {
                         )->getBody();
                     }
                     $deleted++;
-                } catch (NotFoundException $ex) {
+                } catch (NotFoundException | HttpResponseException $ex) {
                     $this->logger->info('Failed to delete foreign draft article. It was likely never imported.');
                     $skipped++;
                 }
@@ -517,8 +522,8 @@ class VanillaDestination extends AbstractDestination {
 
             try {
                 $existingCategory = $this->vanillaApi->getKnowledgeCategoryBySmartID($row["knowledgeCategoryID"]);
-            } catch (NotFoundException $ex) {
-                $this->logger->warning('knowledge category not found');
+            } catch (NotFoundException | HttpResponseException $ex ) {
+                $this->logger->warning($ex->getMessage() . ' failed to import knowledge-category');
                 $skipped++;
                 continue;
             }
@@ -565,7 +570,12 @@ class VanillaDestination extends AbstractDestination {
                     } else {
                         $skipped++;
                     }
-                } catch (NotFoundException $ex) {
+                } catch (NotFoundException | HttpResponseException $ex) {
+                    if ($ex->getCode() == 409) {
+                        $this->logger->warning($ex->getMessage() . " failed to import article.");
+                        continue;
+                    }
+
                     if (!empty($row['userData'])) {
                         $user = $this->getOrCreateUser($row['userData']);
                         $row['updateUserID'] = $user['userID'];
