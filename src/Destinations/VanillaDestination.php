@@ -112,7 +112,7 @@ class VanillaDestination extends AbstractDestination {
                         $kb = $this->vanillaApi->patch('/api/v2/knowledge-bases/'.$existing['knowledgeBaseID'], $patch)->getBody();
                     }
                 }
-            } catch (NotFoundException | HttpResponseException $ex) {
+            } catch (HttpResponseException $ex) {
                 if ($ex->getCode() === 409) {
                     $this->logger->warning($ex->getMessage() . " failed to import knowledge-base");
                     continue;
