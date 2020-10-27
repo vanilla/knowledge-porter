@@ -401,7 +401,7 @@ class VanillaDestination extends AbstractDestination {
                         )->getBody()
                         ;
                     }
-                } catch (NotFoundException | HttpResponseException $ex) {
+                } catch (HttpResponseException $ex) {
                     if ($ex->getCode() === 500 || $ex->getCode() === 409) {
                         $row['failed'] = true;
                         self::$kbcats[] = $row;
@@ -412,7 +412,7 @@ class VanillaDestination extends AbstractDestination {
                         try {
                             $kbCat = $this->vanillaApi->post('/api/v2/knowledge-categories', $row)->getBody();
                             $added++;
-                        } catch (NotFoundException | HttpResponseException $ex) {
+                        } catch (HttpResponseException $ex) {
                             if ($ex->getCode() === 404) {
                                 $row['failed'] = true;
                                 self::$kbcats[] = $row;
@@ -513,7 +513,7 @@ class VanillaDestination extends AbstractDestination {
                         )->getBody();
                     }
                     $deleted++;
-                } catch (NotFoundException | HttpResponseException $ex) {
+                } catch (HttpResponseException $ex) {
                     $this->logger->info('Failed to delete foreign draft article. It was likely never imported.');
                     $skipped++;
                 }
@@ -522,7 +522,7 @@ class VanillaDestination extends AbstractDestination {
 
             try {
                 $existingCategory = $this->vanillaApi->getKnowledgeCategoryBySmartID($row["knowledgeCategoryID"]);
-            } catch (NotFoundException | HttpResponseException $ex ) {
+            } catch (HttpResponseException $ex ) {
                 $this->logger->warning($ex->getMessage() . ' failed to import knowledge-category');
                 $skipped++;
                 continue;
@@ -570,7 +570,7 @@ class VanillaDestination extends AbstractDestination {
                     } else {
                         $skipped++;
                     }
-                } catch (NotFoundException | HttpResponseException $ex) {
+                } catch (HttpResponseException $ex) {
                     if ($ex->getCode() == 409) {
                         $this->logger->warning($ex->getMessage() . " failed to import article.");
                         continue;
@@ -870,7 +870,7 @@ class VanillaDestination extends AbstractDestination {
         $knowledgeBaseIDs = array_column($knowledgeBases, 'knowledgeBaseID');
         try {
             $knowledgeCategories = $this->vanillaApi->getKnowledgeCategoriesByKnowledgeBaseID($knowledgeBaseIDs);
-        } catch (NotFoundException | HttpResponseException $ex) {
+        } catch (HttpResponseException $ex) {
             $this->logger->error("Unable to find knowledge categories");
             die("Can't proceed with clean up, not matching knowledge-categories found.");
         }
@@ -889,7 +889,7 @@ class VanillaDestination extends AbstractDestination {
             $results = [];
             try {
                 $results = $this->vanillaApi->getKnowledgeArticlesByKnowledgeCategoryID($knowledgeCategoryID);
-            } catch (NotFoundException | HttpResponseException $ex) {
+            } catch (HttpResponseException $ex) {
                 $this->logger->info("Couldn't find articles matching knowledgeCategoryID # $knowledgeCategoryID");
             }
 
@@ -914,7 +914,7 @@ class VanillaDestination extends AbstractDestination {
                 if (!$exists) {
                     try {
                         $this->vanillaApi->updateKnowledgeArticleStatus($vanillaArticle);
-                    } catch (NotFoundException | HttpResponseException $ex) {
+                    } catch (HttpResponseException $ex) {
                         $this->logger->info("Failed to set deleted status on article # $vanillaArticle");
                     }
                     $diff[] = $vanillaArticle;
