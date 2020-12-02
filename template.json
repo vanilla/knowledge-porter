@@ -1,43 +1,46 @@
 {
-  "source": {
-    "type": "zendesk",
-    "foreignIDPrefix": "{prefix}",
-    "prefix": "{prefix}",
-    "domain": "{source-domain}",
-    "token": "valerie.trenholm@kaseya.com/token:9BuDjM8LQSGZKgzWLGk5xFePQeWxVBoC75FeH4YD",
-    "targetDomain": "dev.vanilla.localhost",
-    "perPage": 2,
-    "pageFrom": 1,
-    "pageTo": 1000,
-    "import": {
-        "categories": true,
-        "retrySections": true,
-        "sections": true,
-        "authors": false,
-        "articles": true,
-        "translations": false,
-        "attachments":false,
-        "helpful": true,
-        "fetchPrivateArticles": false,
-        "fetchDraft": false
+    "source": {
+        "type": "zendesk",
+        "protocol": "http", // For local setup only
+        "prefix": "{PREFIX}", // prefix to set foreign id on destination records
+        "domain": "{ZENDESK_API_DOMAIN}", // eg: help.gink.com
+        "token": "{EMAIL_TOKEN}", // eg: dev@mail.com/token:xxQWERTYptodnoL
+        "targetDomain": "{NEW_DOMAIN_PATH}", // eg: dev.vanilla.localhost
+        "perPage": 2,
+        "pageFrom": 1,
+        "pageTo": 100,
+        "siteID": 6000000,
+        "import": {
+            "categories": true,
+            "retrySections": false,
+            "sections": true,
+            "authors": false,
+            "articles": true,
+            "translations": false,
+            "attachments": true,
+            "fetchAttachments" : false,
+            "helpful": true,
+            "fetchPrivateArticles": true,
+            "fetchDraft": false
+        },
+        "api": {
+            "cache": true,
+            "log": true
+        }
     },
-    "api": {
-      "cache": false,
-      "log": true
+    "destination": {
+        "type": "vanilla",
+        "domain": "{VANILLA_API_DESTINATION_DOMAIN}", // ex: dev.vanilla.localhost
+        "token": "va.{VANILLA_API_TOKEN}",
+        "update": "onChange",
+        "api": {
+            "cache": false,
+            "log": true,
+            "verbose": false // Display more informations for each request
+        }
+        // by default we don't want KB to be patched after 1st sync
+        // that will allow to avoid kb-url-slug update if edited on vanilla side
+        "patchKnowledgeBase": false,
+        "syncUserByEmailOnly": false
     }
-  },
-  "destination": {
-    "type": "vanilla",
-    "protocol": "http",
-    "domain": "dev.vanilla.localhost",
-    "token": "va.6T1oVO-_f_JjKUGTkUiGRdP8UEsSmKot.ZwA6cg.5vpNE7l",
-    "update": "onChange",
-    "api": {
-      "cache": false,
-      "log": true,
-      "verbose": false
-    },
-    "patchKnowledgeBase": false,
-    "syncUserByEmailOnly": false
-  }
 }
