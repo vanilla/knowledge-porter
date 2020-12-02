@@ -40,6 +40,13 @@ class ZendeskSource extends AbstractSource {
     /** @var ContainerInterface $container */
     protected $container;
 
+    /** @var string */
+    private $auth;
+    /**
+     * @var string
+     */
+    private $attachmentPath;
+
     /**
      * ZendeskSource constructor.
      *
@@ -494,10 +501,40 @@ class ZendeskSource extends AbstractSource {
         foreach ($attachments as $attachment) {
             $url =htmlspecialchars($attachment['content_url']);
             $name = htmlspecialchars($attachment['display_file_name']);
-            $body .= '<p><a href="'.$url.'" download>'.$name.'</a></p>';
+
+            if($this->config['import']['fetchAttachments']){
+                $this->loadAttachments($url);
+            } else {
+                $body .= '<p><a href="'.$url.'" download>'.$name.'</a></p>';
+            }
         }
 
         return $body;
+    }
+
+    public function loadAttachments($url){
+        $auth = base64_encode($this->config['token']);
+        $path = explode('/', $url);
+        $name = str_replace(array('(', ')', ' '), '_', end($path));
+        $filePath = 'attachments_'. $this->config['targetDomain'] . '/' . $path[count($path) - 2];
+
+        if (!is_dir('attachments_'. $this->config['targetDomain'])) {
+            mkdir('attachments_'. $this->config['targetDomain']);
+        }
+
+        if (!is_dir($filePath)) {
+            mkdir($filePath);
+        }
+
+        $context = stream_context_create([
+            "http" => [
+                "header" => "Authorization: Basic $auth",
+                "protocol_version" => 1.1,
+            ]
+        ]);
+        $file = file_get_contents($url, false, $context );
+        file_put_contents($filePath . '/' . $name, $file);
+        $this->logger->info('Downloading ' .  $name);
     }
 
     /**
@@ -654,6 +691,10 @@ HTML;
                 "minimum" => 1,
                 "maximum" => 1000,
             ],
+            "siteID" => [
+                "description" => "Vanilla site ID.",
+                "default" => 000000,
+            ],
             "syncFrom:s?" => [
                 "description" => "Days or Date from which to start import or sync",
                 "allowNull" => true,
@@ -693,6 +734,10 @@ HTML;
                     "attachments" => [
                         "type" => "boolean",
                         "default" => true,
+                    ],
+                    "fetchAttachments" => [
+                        "type" => "boolean",
+                        "default" => false,
                     ],
                     "delete" => [
                         "type" => "boolean",
