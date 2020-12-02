@@ -1,0 +1,43 @@
+{
+  "source": {
+    "type": "zendesk",
+    "foreignIDPrefix": "{prefix}",
+    "prefix": "{prefix}",
+    "domain": "{source-domain}",
+    "token": "valerie.trenholm@kaseya.com/token:9BuDjM8LQSGZKgzWLGk5xFePQeWxVBoC75FeH4YD",
+    "targetDomain": "dev.vanilla.localhost",
+    "perPage": 2,
+    "pageFrom": 1,
+    "pageTo": 1000,
+    "import": {
+        "categories": true,
+        "retrySections": true,
+        "sections": true,
+        "authors": false,
+        "articles": true,
+        "translations": false,
+        "attachments":false,
+        "helpful": true,
+        "fetchPrivateArticles": false,
+        "fetchDraft": false
+    },
+    "api": {
+      "cache": false,
+      "log": true
+    }
+  },
+  "destination": {
+    "type": "vanilla",
+    "protocol": "http",
+    "domain": "dev.vanilla.localhost",
+    "token": "va.6T1oVO-_f_JjKUGTkUiGRdP8UEsSmKot.ZwA6cg.5vpNE7l",
+    "update": "onChange",
+    "api": {
+      "cache": false,
+      "log": true,
+      "verbose": false
+    },
+    "patchKnowledgeBase": false,
+    "syncUserByEmailOnly": false
+  }
+}

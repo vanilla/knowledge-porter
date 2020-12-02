@@ -1,0 +1,44 @@
+{
+  "source": {
+    "type": "zendesk",
+    "foreignIDPrefix": "SonderMind",
+    "prefix": "SonderMind",
+    "domain": "https://support.sondermind.com",
+    "token": "valerie.trenholm@kaseya.com/token:9BuDjM8LQSGZKgzWLGk5xFePQeWxVBoC75FeH4YD",
+    "targetDomain": "dev.vanilla.localhost",
+    "perPage": 2,
+    "pageFrom": 1,
+    "pageTo": 1000,
+    "syncUserByEmailOnly" : false,
+    "import": {
+        "categories": true,
+        "retrySections": true,
+        "sections": true,
+        "authors": true,
+        "articles": true,
+        "translations": true,
+        "attachments": true,
+        "helpful": true,
+        "fetchPrivateArticles": false,
+        "fetchDraft": false
+    },
+    "api": {
+      "cache": false,
+      "log": true
+    }
+  },
+  "destination": {
+    "type": "vanilla",
+    "protocol": "http",
+    "domain": "dev.vanilla.localhost",
+    "token": "va.Qj6fr7HyokqT1lbOawhsKiexohFUTb8f.k6hDcg.yAvVQ--",
+    "update": "onChange",
+    "api": {
+      "cache": false,
+      "log": true,
+      "verbose": false
+    },
+    "patchKnowledgeBase": false,
+    "syncUserByEmailOnly": false
+  }
+}
