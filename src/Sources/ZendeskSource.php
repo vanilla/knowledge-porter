@@ -28,7 +28,6 @@ class ZendeskSource extends AbstractSource {
     const LIMIT = 50;
     const PAGE_START =  1;
     const PAGE_END = 10;
-
     const DEFAULT_SOURCE_LOCALE = 'en-us';
     const DEFAULT_LOCALE = 'en';
 
@@ -39,13 +38,10 @@ class ZendeskSource extends AbstractSource {
 
     /** @var ContainerInterface $container */
     protected $container;
-
-    /** @var string */
-    private $auth;
     /**
      * @var string
      */
-    private $attachmentPath;
+    private $basePath;
 
     /**
      * ZendeskSource constructor.
@@ -64,7 +60,9 @@ class ZendeskSource extends AbstractSource {
      * @return array
      */
     public function getFileRehostingHeaders(): array {
+
         $zdAuthHeader = $this->zendesk->getDefaultHeader('Authorization', null);
+
         if ($zdAuthHeader !== null) {
             return [];
         }
@@ -72,6 +70,7 @@ class ZendeskSource extends AbstractSource {
         $result = [
             "Authorization: $zdAuthHeader",
         ];
+
         return $result;
     }
 
@@ -205,7 +204,6 @@ class ZendeskSource extends AbstractSource {
         $this->translateKnowledgeCategories($knowledgeCategories, $translate);
     }
 
-
     /**
      * Process: GET zendesk articles, POST/PATCH vanilla knowledge base articles
      */
@@ -219,6 +217,12 @@ class ZendeskSource extends AbstractSource {
 
         if (!($this->config['import']['fetchPrivateArticles'] ?? false)) {
             array_push($skipStatus, 'user_segment_id');
+        }
+
+        if($this->config['import']['loadAttachmentsLocally']){
+            if (!is_dir($this->config['targetDomainAttachmentPath'])) {
+                mkdir($this->config['targetDomainAttachmentPath']);
+            }
         }
 
         for ($page = $pageFrom; $page <= $pageTo; $page++) {
@@ -495,46 +499,45 @@ class ZendeskSource extends AbstractSource {
      * @param array $article
      * @return string
      */
-    public function addAttachments(string $body, array $article): string {
+    protected function addAttachments(string $body, array $article): string {
         $attachments = $this->zendesk->getArticleAttachments($article['id']);
 
         foreach ($attachments as $attachment) {
             $url =htmlspecialchars($attachment['content_url']);
             $name = htmlspecialchars($attachment['display_file_name']);
 
-            if($this->config['import']['fetchAttachments']){
-                $this->loadAttachments($url);
-            } else {
-                $body .= '<p><a href="'.$url.'" download>'.$name.'</a></p>';
+            if($this->config['import']['loadAttachmentsLocally']){
+                $url = $this->loadAttachments($url);
+                die($url);
             }
+
+            $body .= '<p><a href="'.$url.'" download>'.$name.'</a></p>';
         }
 
         return $body;
     }
 
-    public function loadAttachments($url){
-        $auth = base64_encode($this->config['token']);
+    /**
+     * Download the attachment file and return the new path
+     *
+     * @param string $url
+     *
+     * @return string
+     */
+    protected function loadAttachments(string $url) : string {
         $path = explode('/', $url);
         $name = str_replace(array('(', ')', ' '), '_', end($path));
-        $filePath = 'attachments_'. $this->config['targetDomain'] . '/' . $path[count($path) - 2];
-
-        if (!is_dir('attachments_'. $this->config['targetDomain'])) {
-            mkdir('attachments_'. $this->config['targetDomain']);
-        }
+        $filePath = $this->config['targetDomainAttachmentPath'] . $path[count($path) - 2];
 
         if (!is_dir($filePath)) {
             mkdir($filePath);
         }
 
-        $context = stream_context_create([
-            "http" => [
-                "header" => "Authorization: Basic $auth",
-                "protocol_version" => 1.1,
-            ]
-        ]);
-        $file = file_get_contents($url, false, $context );
-        file_put_contents($filePath . '/' . $name, $file);
-        $this->logger->info('Downloading ' .  $name);
+        $filePath .= '/' . $name;
+        $file = file_get_contents($url, false, $this->zendesk->getStreamContext());
+        file_put_contents($filePath, $file);
+        $this->logger->info('`Downloading` '.  $url);
+        return $filePath;
     }
 
     /**
@@ -642,6 +645,7 @@ HTML;
         }
 
         $this->zendesk->setToken($this->config['token']);
+        $this->zendesk->setStreamContext($this->config['token']);
         $this->zendesk->setBaseUrl($domain);
     }
 
@@ -660,6 +664,10 @@ HTML;
             ],
             "targetDomain:s?" => [
                 "description" => "Target domain.",
+                "minLength" => 5
+            ],
+            "targetDomainAttachmentPath:s?" => [
+                "description" => "Path were the attachments will be uploaded.",
                 "minLength" => 5
             ],
             "token:s" => [
@@ -691,11 +699,7 @@ HTML;
                 "minimum" => 1,
                 "maximum" => 1000,
             ],
-            "siteID" => [
-                "description" => "Vanilla site ID.",
-                "default" => 000000,
-            ],
-            "syncFrom:s?" => [
+             "syncFrom:s?" => [
                 "description" => "Days or Date from which to start import or sync",
                 "allowNull" => true,
                 "minLength" => 5
@@ -735,7 +739,7 @@ HTML;
                         "type" => "boolean",
                         "default" => true,
                     ],
-                    "fetchAttachments" => [
+                    "loadAttachmentsLocally" => [
                         "type" => "boolean",
                         "default" => false,
                     ],

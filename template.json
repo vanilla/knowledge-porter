@@ -6,10 +6,9 @@
         "domain": "{ZENDESK_API_DOMAIN}", // eg: help.gink.com
         "token": "{EMAIL_TOKEN}", // eg: dev@mail.com/token:xxQWERTYptodnoL
         "targetDomain": "{NEW_DOMAIN_PATH}", // eg: dev.vanilla.localhost
+        "targetDomainAttachmentPath": "https://us.v-cdn.net/000000/uploads/migrated/",
         "perPage": 2,
         "pageFrom": 1,
-        "pageTo": 100,
-        "siteID": 6000000,
         "import": {
             "categories": true,
             "retrySections": false,
@@ -18,7 +17,7 @@
             "articles": true,
             "translations": false,
             "attachments": true,
-            "fetchAttachments" : false,
+            "loadResctrictedAttachments" : false,
             "helpful": true,
             "fetchPrivateArticles": true,
             "fetchDraft": false

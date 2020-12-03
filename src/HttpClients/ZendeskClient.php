@@ -21,6 +21,11 @@ class ZendeskClient extends HttpClient {
     private $token;
 
     /**
+     * @var resource
+     */
+    private $streamContext;
+
+    /**
      * ZendeskClient constructor.
      *
      * @param string $baseUrl
@@ -40,6 +45,15 @@ class ZendeskClient extends HttpClient {
     public function setToken(string $token) {
         $this->token = $token;
         $this->setDefaultHeader('Authorization', "Basic ".base64_encode($token));
+    }
+
+    public function setStreamContext(string $token) {
+        $this->streamContext = stream_context_create([
+            "http" => [
+                "header" => "Authorization: Basic ".base64_encode($token),
+                "protocol_version" => 1.1,
+            ]
+        ]);
     }
 
     /**
@@ -232,5 +246,12 @@ class ZendeskClient extends HttpClient {
      */
     public function getToken(): string {
         return $this->token;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getStreamContext() {
+        return $this->streamContext;
     }
 }
