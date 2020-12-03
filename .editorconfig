@@ -1,17 +1,17 @@
-# editorconfig.org
+# Enforce Unix newlines
+*.css   text eol=lf
+*.html  text eol=lf
+*.js    text eol=lf
+*.json  text eol=lf
+*.less  text eol=lf
+*.md    text eol=lf
+*.yml   text eol=lf
 
-root = true
-
-[*]
-indent_style = space
-indent_size = 4
-end_of_line = lf
-charset = utf-8
-trim_trailing_whitespace = true
-insert_final_newline = true
-
-[*.md]
-trim_trailing_whitespace = false
-
-[*.yml]
-indent_size = 2
+# Skip files on archive
+.editorconfig export-ignore
+.gitattributes export-ignore
+.gitignore export-ignore
+.circleci export-ignore
+infection.json.dist export-ignore
+phpunit.xml.dist export-ignore
+tests export-ignore

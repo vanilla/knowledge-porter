@@ -1,9 +1,0 @@
-/vendor/
-./tests/mocks/*
-/tests/cache/
-cache/*
-.idea/*
-.DS_Store
-**/*.config.json
-**/custom
-**/custom*
