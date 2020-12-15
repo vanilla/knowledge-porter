@@ -560,7 +560,7 @@ class VanillaDestination extends AbstractDestination {
                         if (!empty($user)) {
                             $patch['updateUserID'] = $user['userID'];
                         }
-                        $response = $this->vanillaApi->patch('/api/v2/articles/' . $existingArticle['articleID']."?XDEBUG_SESSION_START=1", array_merge($patch, $rehostFileParams));
+                        $response = $this->vanillaApi->patch('/api/v2/articles/' . $existingArticle['articleID'], array_merge($patch, $rehostFileParams));
                         $this->logRehostHeaders($response);
                         $article = $response->getBody();
                         if (isset($row['featured'])) {
