@@ -15,7 +15,7 @@ trait ConfigurableTrait {
     /**
      * @var array
      */
-    protected $config;
+    protected $config = [];
 
     /**
      * @return array
