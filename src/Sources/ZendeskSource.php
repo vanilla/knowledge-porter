@@ -57,7 +57,8 @@ class ZendeskSource extends AbstractSource {
      * @return array
      */
     public function getFileRehostingHeaders(): array {
-        $zdAuthHeader = $this->zendesk->getDefaultHeader('Authorization: Basic '.base64_encode($this->config['token']), null);
+        $configToken = $this->zendesk->getToken();
+        $zdAuthHeader = $this->zendesk->getDefaultHeader('Authorization: Basic '.base64_encode($configToken), null);
 
         if ($zdAuthHeader !== null) {
             return [];
