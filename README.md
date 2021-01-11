@@ -21,8 +21,8 @@ Example:
         "perPage": 2,
         "pageFrom": 1,
         "pageTo": 100,
-        "sourceLocale": {Zendesk local} // eg: "en-us"
-        "destinationLocale": {local} // eg: "en-us"
+        "sourceLocale": {Zendesk locale} // eg: "en-us"
+        "destinationLocale": {locale} // eg: "en-us"
         "import": {
             "categories": true,
             "retrySections": true,
