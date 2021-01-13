@@ -116,7 +116,7 @@ class ZendeskSource extends AbstractSource {
                 'name' => 'name',
                 'description' => 'description',
                 'urlCode' => ['column' => 'html_url', 'filter' => [$this, 'extractUrlSlug']],
-                'sourceLocale' => ['column' => 'source_locale', 'filter' => [$this, 'getSourceLocale']],
+                'sourceLocale' => ['column' => 'source_locale', 'filter' => [$this, 'getDestinationLocale']],
                 'viewType' => 'viewType',
                 'sortArticles' => 'sortArticles',
                 'dateUpdated' => 'updated_at',
@@ -237,7 +237,7 @@ class ZendeskSource extends AbstractSource {
                 'userData' => ['column' => 'author_id', 'filter' => [$this, 'getUserData']],
                 'knowledgeCategoryID' => ["column" => 'section_id', "filter" => [$this, "addPrefix"]],
                 'format' => ["placeholder" => 'wysiwyg'],
-                'locale' => ['column' => 'locale', 'filter' => [$this, 'getSourceLocale']],
+                'locale' => ['column' => 'locale', 'filter' => [$this, 'getDestinationLocale']],
                 'name' => 'name',
                 'body' => ['column' => 'body', 'filter' => [$this, 'prepareBody']],
                 'featured' => ['column' => 'promoted'],
@@ -452,6 +452,18 @@ class ZendeskSource extends AbstractSource {
     }
 
     /**
+     * Get destination locale
+     *
+     *
+     * @param string $sourceLocale
+     * @return string
+     */
+    protected function getDestinationLocale(string $sourceLocale): string {
+        $locale = $this->config['destinationLocale'] ?? $sourceLocale;
+        return $this->getSourceLocale($locale);
+    }
+
+    /**
      * Parse urls from a string.
      *
      * @param string $body
@@ -491,6 +503,7 @@ class ZendeskSource extends AbstractSource {
      * @return string
      */
     public function addAttachments(string $body, array $article): string {
+
         $attachments = $this->zendesk->getArticleAttachments($article['id']);
 
         foreach ($attachments as $attachment) {
@@ -498,7 +511,6 @@ class ZendeskSource extends AbstractSource {
             $name = htmlspecialchars($attachment['display_file_name']);
             $body .= '<p><a href="'.$url.'" download>'.$name.'</a></p>';
         }
-
         return $body;
     }
 
@@ -633,6 +645,10 @@ HTML;
             "sourceLocale:s?" => [
                 "description" => "Zendesk api content source locale. Ex: en-us",
                 "default" => self::DEFAULT_SOURCE_LOCALE
+            ],
+            "destinationLocale:s?" => [
+                "description" => "Content destination locale. Used only by non-translated categories & articles Ex: en-us",
+                "default" => NULL
             ],
             "articleLimit:i?" => [
                 "allowNull" => true,
