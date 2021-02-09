@@ -20,7 +20,7 @@ use Vanilla\KnowledgePorter\HttpClients\HttpCacheMiddleware;
  * @package Vanilla\KnowledgePorter\Sources
  */
 class OracleSource extends AbstractSource {
-    const LIMIT = 50;
+    const LIMIT = 2;
     const PAGE_START =  1;
 
     /** @var ContainerInterface $container */
@@ -72,7 +72,7 @@ class OracleSource extends AbstractSource {
         }
 
         if ($this->config['import']['Categories'] ?? true) {
-           $this->processKnowledgeCategories();
+           //$this->processKnowledgeCategories();
         }
 
         if ($this->config['import']['articles'] ?? true) {
@@ -94,10 +94,10 @@ class OracleSource extends AbstractSource {
      * @return iterable
      */
     private function processKnowledgeCategories() {
-        [$pageLimit, $pageFrom] = $this->getPaginationInformation();
+        [$perPage, $pageFrom] = $this->getPaginationInformation();
 
         do {
-            $results = $this->oracle->getCategories(['fromId' => $pageFrom, 'limit' => $pageLimit]);
+            $results = $this->oracle->getCategories(['fromId' => $pageFrom, 'limit' => $perPage]);
             $categories = $results['items'];
             $knowledgeCategories = $this->transform($categories, [
                 'knowledgeBaseID' => 'knowledgeBaseID',
@@ -110,10 +110,13 @@ class OracleSource extends AbstractSource {
             ]);
             $dest = $this->getDestination();
             $dest->importKnowledgeCategories($knowledgeCategories);
-            $this->translateKnowledgeCategories($categories);
+            $translate = $this->config['import']['translations'] ?? false;
+            if($translate){
+                $this->translateKnowledgeCategories($categories);
+            }
 
             if($results["links"][2]["rel"] == "next"){
-                $pageFrom = $categories[$pageLimit -1]["id"];
+                $pageFrom = $categories[$perPage -1]["id"];
             } else {
                 break;
             }
@@ -126,19 +129,21 @@ class OracleSource extends AbstractSource {
     private function processKnowledgeArticles() {
 
         $this->oracle->getProducts();
-        [$pageLimit, $pageFrom] = $this->getPaginationInformation();
+        [$perPage, $pageFrom] = $this->getPaginationInformation();
 
         do {
-            $results = $this->oracle->getArticles(['fromId' => $pageFrom, 'limit' => $pageLimit]);
+            $results = $this->oracle->getArticles(['fromId' => $pageFrom, 'limit' => $perPage]);
             $articles = $results['items'];
             $knowledgeArticles = $this->transform($articles, [
-                'articleID' => 'siblingArticleID',
-                'foreignID' => 'id',
-                'knowledgeCategoryID' => 'knowledgeCategoryID' ,
+                'articleID' => 'articleID',
+                'foreignID' => 'foreignID',
+                'knowledgeBaseID' => 'knowledgeBaseID',
+                'knowledgeCategoryID' =>  'knowledgeCategoryID',
                 'format' => 'format',
-                'locale' => ['column' => 'language', 'filter' => [$this, 'getSourceLocale']],
-                'name' => 'summary',
+                'locale' => ['column' => 'locale', 'filter' => [$this, 'getSourceLocale']],
+                'name' => 'name',
                 'body' => 'body',
+                'skip' => 'skip',
                 'dateUpdated' => 'createdTime',
                 'dateInserted' => 'updatedTime',
             ]);
@@ -146,12 +151,12 @@ class OracleSource extends AbstractSource {
             $dest = $this->getDestination();
             $dest->importKnowledgeArticles($knowledgeArticles);
 
-            if($results["links"][2]["rel"] == "next"){
-                $pageFrom = $articles[$pageLimit -1]["id"];
+            if($results["next"]){
+                $pageFrom = end($articles)["foreignID"];
             } else {
                 break;
             }
-        } while($results["links"][2]["rel"] == "next");
+        } while($results["next"] == "next");
     }
 
     /**
@@ -211,7 +216,7 @@ class OracleSource extends AbstractSource {
      * @return array
      */
     protected function getPaginationInformation(): array {
-        $pageLimit = $this->config['pageLimit'] ?? self::LIMIT;
+        $pageLimit = $this->config['perPage'] ?? self::LIMIT;
         $pageFrom = $this->config['pageFrom'] ?? self::PAGE_START;
         return array($pageLimit, $pageFrom);
     }

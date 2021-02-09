@@ -24,6 +24,9 @@ class OracleClient extends HttpClient {
 
     const maxProductSize = 10;
     const knowledgeBaseID = 1;
+    const excludedLocale = ['en_GB', 'fr_CA'];
+    const kbMapByLocale = [ 'en_US' => 1, 'es_ES' => 1, 'fr_FR' => 1, 'de_DE' => 1, 'nl_NL' => 1, 'cs_CZ' => 1,
+                            'pl_PL' => 1, 'it_IT' => 1, 'tr_TR' => 1, 'ru_RU' => 1, 'zh_TW' => 2, 'zh_CN' => 2 , 'ja_JP' => 3];
 
     /**
      * OracleClient constructor.
@@ -97,10 +100,8 @@ class OracleClient extends HttpClient {
 
                 foreach($products["href"] as $productURL){
                     $productID = $this->getTailNumber($productURL);
-                    $product .= "#" . $this->products[$productID] . " ";
+                    $product .= $this->products[$productID] . ", ";
                 }
-
-                $product =  '<p>' . $product . '</p>';
         }
 
         return $product;
@@ -119,7 +120,7 @@ class OracleClient extends HttpClient {
         foreach ($results['items'] as &$category) {
 
             if(!isset($category['parent'])){ // Is a root category.
-                $category['parent'] = -1;
+                $category['parent'] = 1;
             } else {
                 $category['parent'] = $this->getTailNumber($category['parent']['links'][0]['rel']);
             }
@@ -218,6 +219,27 @@ class OracleClient extends HttpClient {
         return $results['items'] ?? null;
     }
 
+    public function formatKeywords($keywords, string $products): string {
+
+        $key = '';
+
+        if(isset($keywords) || isset($productss)){
+            if(isset($keywords)){
+                $key .= "#" . str_replace(', ', ' #', $keywords) . ' ';
+            }
+
+            if(isset($productss)){
+                $key .= "#" . str_replace(', ', ' #', $products);
+            }
+            $key = '<p>' . $key . '<p>';
+        }
+
+
+
+        return $key;
+
+    }
+
     /**
      * Execute GET /services/rest/connect/latest/answers/ request against Oracle Rest Api.
      *
@@ -225,20 +247,30 @@ class OracleClient extends HttpClient {
      * @return array
      */
     public function getArticles(array $query = []): iterable {
-        $queryParams = empty($query) ? "" : "?".http_build_query($query);
-        $results = $this->get("/services/rest/connect/latest/answers?fields=language,question,solution,summary".$queryParams)->getBody() ?? null;
+        $queryParams = empty($query) ? "" : "&". http_build_query($query);
+        $results = $this->get("/services/rest/connect/latest/answers?fields=language,question,solution,summary,keywords".$queryParams)->getBody() ?? null;
+        $articles = [];
 
-        foreach ($results['items'] as &$article) {
+        foreach ($results['items'] as $article) {
+            $id = $article['id'];
+            $products = $this->getArticleProduct($id);
 
-            $article['format'] = 'html';
-            $article['siblingArticleID'] = $this->getSiblingArticleID($article['id']);
-            $article['knowledgeCategoryID'] = $this->getArticleCategory($article['id']);
-            $article['body'] = $article['question'] . ' ' .$article['solution'] . $this->getArticleProduct($article['id']);
-            $article['language'] = $article['language']['lookupName'];
+            $articles['items'][$id]['articleID'] = $this->getSiblingArticleID($id);
+            $articles['items'][$id]['foreignID'] = $id;
+            $articles['items'][$id]['knowledgeBaseID'] = self::kbMapByLocale[$article['language']['lookupName']];
+            $articles['items'][$id]['knowledgeCategoryID'] = self::kbMapByLocale[$article['language']['lookupName']];             ;// $this->getArticleCategory($article['id']);
+            $articles['items'][$id]['format'] = 'html';
+            $articles['items'][$id]['locale'] = $article['language']['lookupName'];
+            $articles['items'][$id]['name'] = $article['summary'];
+            $articles['items'][$id]['body'] = $article['question'] . ' ' .$article['solution'] . $this->formatKeywords($article['keywords'], $products);
+            $articles['items'][$id]['skip'] = in_array($article['language'], self::excludedLocale);
+            $articles['items'][$id]['dateUpdated'] =  $article['createdTime'];
+            $articles['items'][$id]['dateInserted'] = $article['updatedTime'];
             // $articles[$article['id']]['oracleUserID'] = $this->getTailNumber($article['updatedByAccount']['links'][0]['href']);
         }
 
-        return $results;
+        $articles['next'] = ($results["links"][2]["rel"] == "next");
+        return $articles;
     }
 
     /**
