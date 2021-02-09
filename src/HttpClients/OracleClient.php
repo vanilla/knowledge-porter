@@ -23,6 +23,7 @@ class OracleClient extends HttpClient {
     private $products = [];
 
     const maxProductSize = 10;
+    const knowledgeBaseID = 1;
 
     /**
      * OracleClient constructor.
@@ -122,8 +123,8 @@ class OracleClient extends HttpClient {
             } else {
                 $category['parent'] = $this->getTailNumber($category['parent']['links'][0]['rel']);
             }
-
             $category["viewType"] = "help";
+            $category["knowledgeBaseID"] = self::knowledgeBaseID;
             $category["sortArticles"] = "dateInsertedDesc";
             $category['description'] = $category['lookupName'].' placeholder description';
         }
@@ -148,7 +149,7 @@ class OracleClient extends HttpClient {
             foreach($names as $name){
                 $id = $this->getTailNumber($name['href']);
                     $resultName = $this->get($name['href'])->getBody() ?? null;
-                    $translations[$id]['name']['value'] = $resultName['labelText'];
+                    $translations[$id]['name']['value'] = str_replace(' ', '%20', $resultName['labelText']);
                     $translations[$id]['name']['locale'] = $resultName['language']['lookupName'];
             }
         }

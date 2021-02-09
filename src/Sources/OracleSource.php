@@ -7,17 +7,12 @@
 
 namespace Vanilla\KnowledgePorter\Sources;
 
-use DOMDocument;
-use DOMNode;
-use Garden\Container\Container;
-use Garden\Http\HttpResponseException;
+
 use Garden\Schema\Schema;
 use Psr\Container\ContainerInterface;
 use Vanilla\KnowledgePorter\Destinations\VanillaDestination;
 use Vanilla\KnowledgePorter\HttpClients\HttpLogMiddleware;
-use Vanilla\KnowledgePorter\HttpClients\NotFoundException;
 use Vanilla\KnowledgePorter\HttpClients\OracleClient;
-use Vanilla\KnowledgePorter\HttpClients\VanillaClient;
 use Vanilla\KnowledgePorter\HttpClients\HttpCacheMiddleware;
 
 /**
@@ -27,7 +22,6 @@ use Vanilla\KnowledgePorter\HttpClients\HttpCacheMiddleware;
 class OracleSource extends AbstractSource {
     const LIMIT = 50;
     const PAGE_START =  1;
-    const PAGE_END = 10;
 
     /** @var ContainerInterface $container */
     protected $container;
@@ -100,26 +94,23 @@ class OracleSource extends AbstractSource {
      * @return iterable
      */
     private function processKnowledgeCategories() {
-        [$pageLimit, $pageFrom, $pageTo] = $this->getPaginationInformation();
-
-        /** @var VanillaDestination $dest */
-        $dest = $this->getDestination();
+        [$pageLimit, $pageFrom] = $this->getPaginationInformation();
 
         do {
             $results = $this->oracle->getCategories(['fromId' => $pageFrom, 'limit' => $pageLimit]);
             $categories = $results['items'];
-
             $knowledgeCategories = $this->transform($categories, [
-                'knowledgeCategoryID' => 'id',
+                'knowledgeBaseID' => 'knowledgeBaseID',
                 'parentID' => 'parent',
+                'foreignID' => 'id',
                 'name' => 'lookupName',
                 'description' => 'description',
                 'viewType' => 'viewType',
                 'sortArticles' => 'sortArticles',
             ]);
-
-            $knowledgeCategories = $dest->importKnowledgeCategories($knowledgeCategories);
-            $this->translateKnowledgeCategories($knowledgeCategories);
+            $dest = $this->getDestination();
+            $dest->importKnowledgeCategories($knowledgeCategories);
+            $this->translateKnowledgeCategories($categories);
 
             if($results["links"][2]["rel"] == "next"){
                 $pageFrom = $categories[$pageLimit -1]["id"];
@@ -135,19 +126,17 @@ class OracleSource extends AbstractSource {
     private function processKnowledgeArticles() {
 
         $this->oracle->getProducts();
-
-        [$pageLimit, $pageFrom, $pageTo] = $this->getPaginationInformation();
+        [$pageLimit, $pageFrom] = $this->getPaginationInformation();
 
         do {
             $results = $this->oracle->getArticles(['fromId' => $pageFrom, 'limit' => $pageLimit]);
             $articles = $results['items'];
             $knowledgeArticles = $this->transform($articles, [
                 'articleID' => 'siblingArticleID',
-                'articleRevisionID' =>'id',
                 'foreignID' => 'id',
                 'knowledgeCategoryID' => 'knowledgeCategoryID' ,
                 'format' => 'format',
-                'locale' => 'language',
+                'locale' => ['column' => 'language', 'filter' => [$this, 'getSourceLocale']],
                 'name' => 'summary',
                 'body' => 'body',
                 'dateUpdated' => 'createdTime',
@@ -193,6 +182,49 @@ class OracleSource extends AbstractSource {
 
         $this->oracle->setToken($this->config['username'], $this->config['password']);
         $this->oracle->setBaseUrl($domain);
+    }
+
+    protected function translateKnowledgeCategories(iterable $knowledgeCategories) {
+        $dest = $this->getDestination();
+
+        foreach($knowledgeCategories as $knowledgeCategory){
+
+            $translations = $this->oracle->getCategoryTranslations($knowledgeCategory["id"]);
+
+            foreach($translations as $translation){
+                $kbTranslations = $this->transform($translation, [
+                    'recordID' => ['placeholder' => $knowledgeCategory['id']],
+                    'recordType' => ['placeholder' => 'knowledgeCategory'],
+                    'locale' => ['column' => 'locale', 'filter' => [$this, 'getSourceLocale']],
+                    'propertyName' => ['placeholder' => 'name'],
+                    'translation' => ['column' => 'value']
+                ]);
+                $dest->importKnowledgeBaseTranslations($kbTranslations);
+            }
+
+        }
+    }
+
+    /**
+     * Grab all the pagination information from config
+     *
+     * @return array
+     */
+    protected function getPaginationInformation(): array {
+        $pageLimit = $this->config['pageLimit'] ?? self::LIMIT;
+        $pageFrom = $this->config['pageFrom'] ?? self::PAGE_START;
+        return array($pageLimit, $pageFrom);
+    }
+
+    /**
+     * Get source locale
+     *
+     * @param string $sourceLocale
+     * @return string
+     */
+    protected function getSourceLocale(string $sourceLocale): string {
+        $arr = explode('_', $sourceLocale);
+        return $arr[0];
     }
 
     /**
@@ -313,57 +345,5 @@ class OracleSource extends AbstractSource {
             ]
         ]);
     }
-
-    /**
-     * Set PageLimits for import.
-     *
-     * @return array
-     */
-    private function setPageLimits(): array {
-        if ($this->config['articleLimit'] ?? false) {
-            $pageLimit = $this->config['articleLimit'];
-            $pageFrom = $this->config['pageFrom'] ?? self::PAGE_START;
-            $pageTo = $pageFrom;
-            $this->logger->info('Article limit set to ' . $this->config['articleLimit'] . 'will be fetched');
-        } else {
-            $pageLimit = $this->config['pageLimit'] ?? self::LIMIT;
-            $pageFrom = $this->config['pageFrom'] ?? self::PAGE_START;
-            $pageTo = $this->config['pageTo'] ?? self::PAGE_END;
-            $this->logger->info('No Article limit set to all articles will be fetched');
-        }
-
-        return array($pageLimit, $pageFrom, $pageTo);
-    }
-
-    private function translateKnowledgeCategories(iterable $knowledgeCategories) {
-        $dest = $this->getDestination();
-
-        foreach($knowledgeCategories as $knowledgeCategory){
-
-            $this->oracle->getCategoryTranslations($knowledgeCategory["knowledgeCategoryID"]);
-
-            foreach($knowledgeCategory['translations'] as $translation){
-
-                $kbTranslations = $this->transform($translation, [
-                    'recordID' => ['placeholder' => $knowledgeCategory['knowledgeCategoryID']],
-                    'recordType' => ['placeholder' => 'knowledgeCategory'],
-                    'locale' => ['column' => 'locale', 'filter' => [$this, 'getSourceLocale']],
-                    'propertyName' => ['placeholder' => 'name'],
-                    'translation' => ['column' => 'name'],
-                ]);
-                $dest->importKnowledgeBaseTranslations($kbTranslations);
-
-                $translation = new \ArrayObject($translation);
-                $kbTranslations = $this->transform($translation, [
-                    'recordID' => ['placeholder' => $knowledgeCategory['knowledgeCategoryID']],
-                    'recordType' => ['placeholder' => 'knowledgeCategory'],
-                    'locale' => ['column' => 'locale', 'filter' => [$this, $knowledgeCategory['knowledgeCategoryID']]],
-                    'propertyName' => ['placeholder' => 'description'],
-                    'translation' => ['column' => 'description'],
-                ]);
-                $dest->importKnowledgeBaseTranslations($kbTranslations);
-            }
-
-        }
-    }
 }
+
