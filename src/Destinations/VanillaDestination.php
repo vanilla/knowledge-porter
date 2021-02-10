@@ -371,6 +371,7 @@ class VanillaDestination extends AbstractDestination {
             if (($row['skip'] ?? '') === 'true') {
                 continue;
             }
+            $existing = false;
 
             if (($row['rootCategory'] ?? 'false') === 'true') {
                 $result = $this->vanillaApi->get("/api/v2/knowledge-bases/".rawurlencode($row['knowledgeBaseID']));

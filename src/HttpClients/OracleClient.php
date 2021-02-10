@@ -81,22 +81,11 @@ class OracleClient extends HttpClient {
         foreach ($results['items'] as $item) {
             $id = $item['id'];
             $category = $this->get("/services/rest/connect/v1.4/serviceCategories/".$id)->getBody() ?? null;
-            $categories['items'][$id]['foreignID'] = $id;
-            $categories['items'][$id]["knowledgeBaseID"] = self::knowledgeBaseID;
-            $categories['items'][$id]['name'] = $category['lookupName'];
-            $categories['items'][$id]['description'] = $category['lookupName'].' placeholder description';
-            $categories['items'][$id]["viewType"] = "help";
-            $categories['items'][$id]["sortArticles"] = "dateInsertedDesc";
-
-            if(!isset($category['parent'])){ // Is a root category.
-                $categories['items'][$id]['parent'] = self::rootCategory;
-            } else {
-                $categories['items'][$id]['parent'] = $this->getTailNumber($category['parent']['links'][0]['href']);
-            }
+            yield $category;
         }
 
-        $categories['next'] = ($results["links"][2]["rel"] == "next");
-        return $categories;
+//        $categories['next'] = ($results["links"][2]["rel"] == "next");
+//        return $categories;
     }
 
     /**

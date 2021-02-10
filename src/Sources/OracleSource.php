@@ -22,6 +22,7 @@ use Vanilla\KnowledgePorter\HttpClients\HttpCacheMiddleware;
 class OracleSource extends AbstractSource {
     const LIMIT = 2;
     const PAGE_START =  1;
+    const PAGE_END = 100;
     const DEFAULT_LOCALE = 'en';
 
     /** @var ContainerInterface $container */
@@ -86,16 +87,18 @@ class OracleSource extends AbstractSource {
      * Process: GET oracle categories, POST/PATCH vanilla knowledge bases
      */
     private function processKnowledgeBases() {
-        $kbs[1]['foreignID'] = 1;
-        $kbs[1]['name'] = 'OracleKnowledgeBase';
-        $kbs[1]['description'] = 'placeholder';
-        $kbs[1]['urlCode'] = 'kb';
-        $kbs[1]['sourceLocale'] = self::DEFAULT_LOCALE;
-        $kbs[1]["viewType"] = "help";
-        $kbs[1]["sortArticles"] = "dateInsertedDesc";
-
+        $kbs = $this->mockKnowledgeBases();
+        /** @var VanillaDestination $dest */
         $dest = $this->getDestination();
-        $dest->importKnowledgeBases($kbs);
+        foreach ($dest->importKnowledgeBases($kbs) as $knowledgeBase) {
+            echo "KB created/updated: ". $knowledgeBase['name']."\n";
+        }
+    }
+
+    private function mockKnowledgeBases(): iterable {
+        $kb = (array)$this->config["kb"];
+//        yield $kb;
+        return [$kb];
     }
 
     /**
@@ -104,33 +107,47 @@ class OracleSource extends AbstractSource {
      * @return iterable
      */
     private function processKnowledgeCategories() {
-        [$perPage, $pageFrom] = $this->getPaginationInformation();
+//        [$perPage, $pageFrom] = $this->getPaginationInformation();
+        [$pageLimit, $pageFrom, $pageTo] = $this->getPaginationInformation();
 
-        do {
-            $results = $this->oracle->getCategories(['fromId' => $pageFrom, 'limit' => $perPage]);
-            $categories = $results['items'];
+        for ($page = $pageFrom; $page <= $pageTo; $page++) {
+            $offset = ($pageFrom -1) * $pageLimit;
+            $categories = $this->oracle->getCategories(['offset' => $offset, 'limit' => $pageLimit]);
             $knowledgeCategories = $this->transform($categories, [
-                'knowledgeBaseID' => 'knowledgeBaseID',
-                'parentID' => 'parent',
-                'foreignID' => 'foreignID',
-                'name' => 'name',
-                'description' => 'description',
-                'viewType' => 'viewType',
-                'sortArticles' => 'sortArticles',
+                'foreignID' => ['column' => 'id', 'filter' => [$this, 'addPrefix']],
+                "knowledgeBaseID" => ['placeholder' => $this->config['kb']['knowledgeBaseID']],
+                'name' => 'lookupName',
+                'parentID' => ['placeholder' => $this->config['kb']['rootKnowledgeCategory']],
             ]);
+            /** @var VanillaDestination $dest */
             $dest = $this->getDestination();
-            $dest->importKnowledgeCategories($knowledgeCategories);
-            $translate = $this->config['import']['translations'] ?? false;
-            if($translate){
-                $this->translateKnowledgeCategories($categories);
+            foreach ($dest->importKnowledgeCategories($knowledgeCategories) as $category) {
+//                echo json_encode($category);
+                echo $category['knowledgeCategoryID'].' - '.$category['name'];
             }
+//            $translate = $this->config['import']['translations'] ?? false;
+//            if($translate){
+//                $this->translateKnowledgeCategories($categories);
+//            }
 
-            if($results["next"]){
-                $pageFrom = end( $categories)["foreignID"];
-            } else {
-                break;
-            }
-        } while($results["next"] == "next");
+//            if($results["next"]){
+//                $pageFrom = end( $categories)["foreignID"];
+//            } else {
+//                break;
+//            }
+        }
+//        while($results["next"] == "next");
+    }
+
+    /**
+     * Add foreignID prefix to string.
+     *
+     * @param mixed $str
+     * @return string
+     */
+    protected function addPrefix($str): string {
+        $newStr = $this->config["foreignIDPrefix"].$str;
+        return $newStr;
     }
 
     /**
@@ -237,9 +254,12 @@ class OracleSource extends AbstractSource {
      * @return array
      */
     protected function getPaginationInformation(): array {
-        $pageLimit = $this->config['perPage'] ?? self::LIMIT;
+        $pageLimit = $this->config['pageLimit'] ?? self::LIMIT;
         $pageFrom = $this->config['pageFrom'] ?? self::PAGE_START;
-        return array($pageLimit, $pageFrom);
+        $pageTo = $this->config['pageTo'] ?? self::PAGE_END;
+
+        return array($pageLimit, $pageFrom, $pageTo);
+//        return array($pageLimit, $pageFrom);
     }
 
 
@@ -271,6 +291,7 @@ class OracleSource extends AbstractSource {
     private function configSchema(): Schema {
         return Schema::parse([
             "type:s?" => ["default" => 'oracle'],
+            "foreignIDPrefix:s?" => ["default" => 'oracle-'],
             "domain:s" => [
                 "description" => "Oracle domain.",
                 "minLength" => 5
@@ -315,6 +336,10 @@ class OracleSource extends AbstractSource {
             "import:o?" => [
                 "description" => "Import by content type: categories, sections, articles.",
                 "properties" => [
+                    "knowledgeBase" => [
+                        "type" => "boolean",
+                        "default" => true,
+                    ],
                     "categories" => [
                         "type" => "boolean",
                         "default" => true,
@@ -357,6 +382,7 @@ class OracleSource extends AbstractSource {
                 ],
             ],
             "localeMapping:o?",
+            "kb:o?",
             "api:o?" => [
                 "properties" => [
                     "log" => [
