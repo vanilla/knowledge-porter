@@ -22,6 +22,7 @@ use Vanilla\KnowledgePorter\HttpClients\HttpCacheMiddleware;
 class OracleSource extends AbstractSource {
     const LIMIT = 2;
     const PAGE_START =  1;
+    const DEFAULT_LOCALE = 'en';
 
     /** @var ContainerInterface $container */
     protected $container;
@@ -52,7 +53,7 @@ class OracleSource extends AbstractSource {
         $authHeader = $this->oracle->getToken();
 
         if ($authHeader == null) {
-           return [];
+            return [];
         }
 
         $result = [
@@ -72,11 +73,11 @@ class OracleSource extends AbstractSource {
         }
 
         if ($this->config['import']['Categories'] ?? true) {
-           //$this->processKnowledgeCategories();
+            $this->processKnowledgeCategories();
         }
 
         if ($this->config['import']['articles'] ?? true) {
-           $this->processKnowledgeArticles();
+            $this->processKnowledgeArticles();
         }
 
     }
@@ -85,7 +86,16 @@ class OracleSource extends AbstractSource {
      * Process: GET oracle categories, POST/PATCH vanilla knowledge bases
      */
     private function processKnowledgeBases() {
-        // TODO
+        $kbs[1]['foreignID'] = 1;
+        $kbs[1]['name'] = 'OracleKnowledgeBase';
+        $kbs[1]['description'] = 'placeholder';
+        $kbs[1]['urlCode'] = 'kb';
+        $kbs[1]['sourceLocale'] = self::DEFAULT_LOCALE;
+        $kbs[1]["viewType"] = "help";
+        $kbs[1]["sortArticles"] = "dateInsertedDesc";
+
+        $dest = $this->getDestination();
+        $dest->importKnowledgeBases($kbs);
     }
 
     /**
@@ -102,8 +112,8 @@ class OracleSource extends AbstractSource {
             $knowledgeCategories = $this->transform($categories, [
                 'knowledgeBaseID' => 'knowledgeBaseID',
                 'parentID' => 'parent',
-                'foreignID' => 'id',
-                'name' => 'lookupName',
+                'foreignID' => 'foreignID',
+                'name' => 'name',
                 'description' => 'description',
                 'viewType' => 'viewType',
                 'sortArticles' => 'sortArticles',
@@ -115,24 +125,35 @@ class OracleSource extends AbstractSource {
                 $this->translateKnowledgeCategories($categories);
             }
 
-            if($results["links"][2]["rel"] == "next"){
-                $pageFrom = $categories[$perPage -1]["id"];
+            if($results["next"]){
+                $pageFrom = end( $categories)["foreignID"];
             } else {
                 break;
             }
-        } while($results["links"][2]["rel"] == "next");
+        } while($results["next"] == "next");
     }
 
     /**
      * Process: GET oracle articles, POST/PATCH vanilla knowledge base articles
      */
     private function processKnowledgeArticles() {
+        $locales = $this->config['import']['locales'];
+        $importProduct = $this->config['import']['products'];
+        $importVariables = $this->config['import']['variables'];
 
-        $this->oracle->getProducts();
+        if($importProduct){
+            $this->oracle->getProducts();
+        }
+
+        if($importVariables){
+            $this->oracle->getVariables();
+        }
+
+
         [$perPage, $pageFrom] = $this->getPaginationInformation();
 
         do {
-            $results = $this->oracle->getArticles(['fromId' => $pageFrom, 'limit' => $perPage]);
+            $results = $this->oracle->getArticles(['fromId' => $pageFrom, 'limit' => $perPage], $locales, $importProduct ,$importVariables);
             $articles = $results['items'];
             $knowledgeArticles = $this->transform($articles, [
                 'articleID' => 'articleID',
@@ -221,6 +242,7 @@ class OracleSource extends AbstractSource {
         return array($pageLimit, $pageFrom);
     }
 
+
     /**
      * Get source locale
      *
@@ -228,8 +250,17 @@ class OracleSource extends AbstractSource {
      * @return string
      */
     protected function getSourceLocale(string $sourceLocale): string {
-        $arr = explode('_', $sourceLocale);
-        return $arr[0];
+
+        $dialects = ["en_GB", "es_MX", "fr_CA", "mk_MK", "ms_MY", "pt_BR","zh_TW", "zu_Za"];
+
+        if (in_array($sourceLocale, $dialects)) {
+            $locale =$sourceLocale;
+        } else {
+            $sourceLocale = explode("_", $sourceLocale);
+            $locale = $sourceLocale[0];
+        }
+
+        return $locale;
     }
 
     /**
@@ -288,10 +319,6 @@ class OracleSource extends AbstractSource {
                         "type" => "boolean",
                         "default" => true,
                     ],
-                    "sections" => [
-                        "type" => "boolean",
-                        "default" => true,
-                    ],
                     "authors" => [
                         "type" => "boolean",
                         "default" => true,
@@ -316,17 +343,16 @@ class OracleSource extends AbstractSource {
                         "type" => "boolean",
                         "default" => true,
                     ],
-                    "delete" => [
+                    "products" => [
+                        "type" => "boolean",
+                        "default" => true,
+                    ],
+                    "variables" => [
                         "type" => "boolean",
                         "default" => false,
                     ],
-                    "fetchDraft" => [
-                        "type" => "boolean",
-                        "default" => false,
-                    ],
-                    "fetchPrivateArticles" => [
-                        "type" => "boolean",
-                        "default" => false,
+                    "locales" => [
+                        "default" => ['en_US'],
                     ],
                 ],
             ],
