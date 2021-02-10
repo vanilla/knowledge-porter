@@ -29,8 +29,6 @@ class OracleClient extends HttpClient {
     const maxProductSize = 10;
     const knowledgeBaseID = 1;
     const rootCategory = 1;
-    const excludedLocale = ['en_GB', 'fr_CA'];
-
 
     /**
      * OracleClient constructor.
@@ -286,7 +284,6 @@ class OracleClient extends HttpClient {
                 $articles['items'][$id]['name'] = $article['summary'];
                 $articles['items'][$id]['dateUpdated'] =  $article['createdTime'];
                 $articles['items'][$id]['dateInserted'] = $article['updatedTime'];
-                $articles['items'][$id]['skip'] = in_array($article['language'], self::excludedLocale);
                 $articles['items'][$id]['oracleUserID'] = $this->getTailNumber($article['updatedByAccount']['links'][0]['href']);
 
                 $body = $article['question'] . ' ' .$article['solution'];
