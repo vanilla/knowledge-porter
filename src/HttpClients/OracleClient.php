@@ -228,32 +228,36 @@ class OracleClient extends HttpClient {
      */
     public function getArticles(array $query = [], array $locales, bool $importProducts = false, bool $importVariables = false): iterable {
         $queryParams = empty($query) ? "" : "&". http_build_query($query);
-        $results = $this->get("/services/rest/connect/latest/answers?fields=language".$queryParams)->getBody() ?? null;
+        $answers = $this->get("/services/rest/connect/latest/answers?fields=language".$queryParams)->getBody() ?? null;
         $products = '';
+        $results = [];
 
-        foreach ($results['items'] as &$article) {
+        foreach ($answers['items'] as $item) {
+            $locale = $item['language']['lookupName'];
+            $skip = !in_array($locale, $locales);
 
-            $skip = !in_array($article['language']['lookupName'], $locales);
-
-            if(!$article['skip']){
+            if(!$skip){
 
                 if($importProducts){
-                    $products = $this->getArticleProduct($article['id']);
+                    $products = $this->getArticleProduct($item['id']);
                 }
 
-                $article = $this->get("/services/rest/connect/latest/answers/" . $article['id'])->getBody() ?? null;
+                $article = $this->get("/services/rest/connect/latest/answers/" . $item['id'])->getBody() ?? [];
                 $article['skip'] = $skip;
+                $article['locale'] = $locale;
                 $article['articleID'] = $this->getSiblingArticleID($article['id']);
                 $article['knowledgeCategoryID'] = $this->getArticleCategory($article['id']);
                 //$articles['items'][$id]['oracleUserID'] = $this->getTailNumber($article['updatedByAccount']['links'][0]['href']);
 
-                $body = $article['question'] . ' ' .$article['solution'];
+                $article['name'] = $article['summary'];
+                $body = $article['question'].' '.$article['solution'];
 
                 if($importVariables){
                     $body = $this->replaceVariables($body, $article['language']['id']);
                 }
 
                 $article['body'] = $body . $this->formatKeywords($article['keywords'], $products);
+                $results[] = $article;
             }
         }
 

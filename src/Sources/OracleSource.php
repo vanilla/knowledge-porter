@@ -67,15 +67,15 @@ class OracleSource extends AbstractSource {
      */
     public function import(): void {
 
-        if ($this->config['import']['knowledgeBase'] ?? true) {
+        if ($this->config['import']['knowledgeBase'] ?? false) {
             $this->processKnowledgeBases();
         }
 
-        if ($this->config['import']['Categories'] ?? true) {
+        if ($this->config['import']['categories'] ?? false) {
             $this->processKnowledgeCategories();
         }
 
-        if ($this->config['import']['articles'] ?? true) {
+        if ($this->config['import']['articles'] ?? false) {
             $this->processKnowledgeArticles();
         }
 
@@ -108,7 +108,7 @@ class OracleSource extends AbstractSource {
         [$pageLimit, $pageFrom, $pageTo] = $this->getPaginationInformation();
 
         for ($page = $pageFrom; $page <= $pageTo; $page++) {
-            $offset = ($pageFrom -1) * $pageLimit;
+            $offset = ($page -1) * $pageLimit;
             $categories = $this->oracle->getCategories(['offset' => $offset, 'limit' => $pageLimit]);
             $knowledgeCategories = $this->transform($categories, [
                 'foreignID' => ['column' => 'id', 'filter' => [$this, 'addPrefix']],
@@ -122,6 +122,10 @@ class OracleSource extends AbstractSource {
             $translate = $this->config['import']['translations'] ?? false;
             if($translate){
                 $this->translateKnowledgeCategories($categories);
+            } else {
+                foreach ($categories as $category) {
+                    echo $category['name']."\n";
+                }
             }
         }
     }
@@ -156,43 +160,40 @@ class OracleSource extends AbstractSource {
         $importProduct = $this->config['import']['products'];
         $importVariables = $this->config['import']['variables'];
 
-        if($importProduct){
-            $this->oracle->getProducts();
-        }
+//        if($importProduct){
+//            $this->oracle->getProducts();
+//        }
 
-        if($importVariables){
-            $this->oracle->getVariables();
-        }
+//        if($importVariables){
+//            $this->oracle->getVariables();
+//        }
 
 
-        [$perPage, $pageFrom] = $this->getPaginationInformation();
+        [$pageLimit, $pageFrom, $pageTo] = $this->getPaginationInformation();
 
-        do {
-            $results = $this->oracle->getArticles(['fromId' => $pageFrom, 'limit' => $perPage], $locales, $importProduct ,$importVariables);
-            $articles = $results['items'];
+        for ($page = $pageFrom; $page <= $pageTo; $page++) {
+            $offset = ($page -1) * $pageLimit;
+            $articles = $this->oracle->getArticles(['offset' => $offset, 'limit' => $pageLimit], $locales, $importProduct ,$importVariables);
+//            $articles = $results['items'];
             $knowledgeArticles = $this->transform($articles, [
-                'articleID' => 'articleID',
-                'foreignID' => 'foreignID',
-                'knowledgeBaseID' => 'knowledgeBaseID',
-                'knowledgeCategoryID' =>  'knowledgeCategoryID',
-                'format' => 'format',
-                'locale' => ['column' => 'locale', 'filter' => [$this, 'getSourceLocale']],
-                'name' => 'name',
-                'body' => 'body',
-                'skip' => 'skip',
-                'dateUpdated' => 'createdTime',
-                'dateInserted' => 'updatedTime',
+                'articleID' => ['column' => 'id'],
+                'foreignID' => ['column' => 'id', 'filter' => [$this, 'addPrefix']],
+                'knowledgeCategoryID' =>  ['column' => 'knowledgeCategoryID', 'filter' => [$this, 'addPrefix']],
+                'format' => ['placeholder' => 'html'],
+                'locale' => ['column' => 'locale', 'filter' => [$this, 'transformLocale']],
+                'name' => ['column' => 'name'],
+                'body' => ['column' => 'body'],
+                'skip' => ['placeholder' => false],
+                'dateUpdated' => ['column' => 'createdTime'],
+                'dateInserted' => ['column' => 'updatedTime'],
             ]);
 
             $dest = $this->getDestination();
-            $dest->importKnowledgeArticles($knowledgeArticles);
-
-            if($results["next"]){
-                $pageFrom = end($articles)["foreignID"];
-            } else {
-                break;
+            $articles = $dest->importKnowledgeArticles($knowledgeArticles);
+            foreach ($articles as $article) {
+                echo $article['name']."\n";
             }
-        } while($results["next"] == "next");
+        }
     }
 
     /**
