@@ -83,9 +83,6 @@ class OracleClient extends HttpClient {
             $category = $this->get("/services/rest/connect/v1.4/serviceCategories/".$id)->getBody() ?? null;
             yield $category;
         }
-
-//        $categories['next'] = ($results["links"][2]["rel"] == "next");
-//        return $categories;
     }
 
     /**
@@ -161,8 +158,6 @@ class OracleClient extends HttpClient {
                 $url = $results["links"][2]["href"];
                 $this->products[$product["id"]] = $product["lookupName"];
             }
-
-
         } while($results["links"][2]["rel"] == "next");
     }
 
@@ -184,7 +179,6 @@ class OracleClient extends HttpClient {
                 $product .= $this->products[$productID] . ", ";
             }
         }
-
         return $product;
     }
 
@@ -231,11 +225,7 @@ class OracleClient extends HttpClient {
             }
             $key = '<p>' . $key . '<p>';
         }
-
-
-
         return $key;
-
     }
 
     /**
@@ -250,43 +240,35 @@ class OracleClient extends HttpClient {
     public function getArticles(array $query = [], array $locales, bool $importProducts = false, bool $importVariables = false): iterable {
         $queryParams = empty($query) ? "" : "&". http_build_query($query);
         $results = $this->get("/services/rest/connect/latest/answers?fields=language".$queryParams)->getBody() ?? null;
-        $articles = [];
         $products = '';
 
-        foreach ($results['items'] as $item) {
+        foreach ($results['items'] as &$article) {
 
-            $id = $item['id'];
-            $articles['items'][$id]['skip'] = !in_array($item['language']['lookupName'], $locales);
+            $skip = !in_array($article['language']['lookupName'], $locales);
 
-            if(!$articles['items'][$id]['skip']){
+            if(!$article['skip']){
+
                 if($importProducts){
-                    $products = $this->getArticleProduct($id);
+                    $products = $this->getArticleProduct($article['id']);
                 }
 
-                $article = $this->get("/services/rest/connect/latest/answers/" . $id)->getBody() ?? null;
-
-                $articles['items'][$id]['articleID'] = $this->getSiblingArticleID($id);
-                $articles['items'][$id]['foreignID'] = $id;
-                $articles['items'][$id]['knowledgeCategoryID'] = $this->getArticleCategory($id);
-                $articles['items'][$id]['format'] = 'html';
-                $articles['items'][$id]['locale'] = $article['language']['lookupName'];
-                $articles['items'][$id]['name'] = $article['summary'];
-                $articles['items'][$id]['dateUpdated'] =  $article['createdTime'];
-                $articles['items'][$id]['dateInserted'] = $article['updatedTime'];
-                $articles['items'][$id]['oracleUserID'] = $this->getTailNumber($article['updatedByAccount']['links'][0]['href']);
+                $article = $this->get("/services/rest/connect/latest/answers/" . $article['id'])->getBody() ?? null;
+                $article['skip'] = $skip;
+                $article['articleID'] = $this->getSiblingArticleID($article['id']);
+                $article['knowledgeCategoryID'] = $this->getArticleCategory($article['id']);
+                //$articles['items'][$id]['oracleUserID'] = $this->getTailNumber($article['updatedByAccount']['links'][0]['href']);
 
                 $body = $article['question'] . ' ' .$article['solution'];
 
                 if($importVariables){
-                    $body = $this->replaceVariables($body, $item['language']['id']);
+                    $body = $this->replaceVariables($body, $article['language']['id']);
                 }
 
-                $articles['items'][$id]['body'] = $body . $this->formatKeywords($article['keywords'], $products);
+                $article['body'] = $body . $this->formatKeywords($article['keywords'], $products);
             }
         }
 
-        $articles['next'] = ($results["links"][2]["rel"] == "next");
-        return $articles;
+        return $results;
     }
 
     /**

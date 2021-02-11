@@ -57,11 +57,9 @@ class OracleSource extends AbstractSource {
             return [];
         }
 
-        $result = [
+        return [
             "Authorization: $authHeader",
         ];
-
-        return $result;
     }
 
     /**
@@ -70,7 +68,7 @@ class OracleSource extends AbstractSource {
     public function import(): void {
 
         if ($this->config['import']['knowledgeBase'] ?? true) {
-            $this->processKnowledgeBases();
+          //  $this->processKnowledgeBases();
         }
 
         if ($this->config['import']['Categories'] ?? true) {
@@ -97,7 +95,6 @@ class OracleSource extends AbstractSource {
 
     private function mockKnowledgeBases(): iterable {
         $kb = (array)$this->config["kb"];
-//        yield $kb;
         return [$kb];
     }
 
@@ -281,6 +278,10 @@ class OracleSource extends AbstractSource {
         }
 
         return $locale;
+    }
+
+    protected function getCategoryParentID($parent){
+
     }
 
     /**
