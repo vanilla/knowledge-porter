@@ -68,7 +68,7 @@ class OracleSource extends AbstractSource {
     public function import(): void {
 
         if ($this->config['import']['knowledgeBase'] ?? true) {
-          //  $this->processKnowledgeBases();
+            $this->processKnowledgeBases();
         }
 
         if ($this->config['import']['Categories'] ?? true) {
@@ -118,22 +118,12 @@ class OracleSource extends AbstractSource {
             ]);
             /** @var VanillaDestination $dest */
             $dest = $this->getDestination();
-            foreach ($dest->importKnowledgeCategories($knowledgeCategories) as $category) {
-//                echo json_encode($category);
-                echo $category['knowledgeCategoryID'].' - '.$category['name'];
+            $categories = $dest->importKnowledgeCategories($knowledgeCategories);
+            $translate = $this->config['import']['translations'] ?? false;
+            if($translate){
+                $this->translateKnowledgeCategories($categories);
             }
-//            $translate = $this->config['import']['translations'] ?? false;
-//            if($translate){
-//                $this->translateKnowledgeCategories($categories);
-//            }
-
-//            if($results["next"]){
-//                $pageFrom = end( $categories)["foreignID"];
-//            } else {
-//                break;
-//            }
         }
-//        while($results["next"] == "next");
     }
 
     /**
@@ -144,6 +134,17 @@ class OracleSource extends AbstractSource {
      */
     protected function addPrefix($str): string {
         $newStr = $this->config["foreignIDPrefix"].$str;
+        return $newStr;
+    }
+
+    /**
+     * Add foreignID prefix to string.
+     *
+     * @param mixed $str
+     * @return string
+     */
+    protected function trimPrefix($str): string {
+        $newStr = str_replace($this->config["foreignIDPrefix"], '', $str);
         return $newStr;
     }
 
@@ -229,20 +230,37 @@ class OracleSource extends AbstractSource {
 
         foreach($knowledgeCategories as $knowledgeCategory){
 
-            $translations = $this->oracle->getCategoryTranslations($knowledgeCategory["id"]);
+            $translations = $this->oracle->getCategoryTranslations($this->trimPrefix($knowledgeCategory['foreignID']), true, false);
 
             foreach($translations as $translation){
                 $kbTranslations = $this->transform($translation, [
-                    'recordID' => ['placeholder' => $knowledgeCategory['id']],
+                    'recordID' => ['placeholder' => $knowledgeCategory['knowledgeCategoryID']],
                     'recordType' => ['placeholder' => 'knowledgeCategory'],
-                    'locale' => ['column' => 'locale', 'filter' => [$this, 'getSourceLocale']],
-                    'propertyName' => ['placeholder' => 'name'],
-                    'translation' => ['column' => 'value']
+                    'locale' => ['column' => 'locale', 'filter' => [$this, 'transformLocale']],
+                    'propertyName' => ['column' => 'propertyName'],
+                    'translation' => ['column' => 'translation'],
                 ]);
                 $dest->importKnowledgeBaseTranslations($kbTranslations);
             }
 
         }
+    }
+
+    protected function transformLocale(string $locale): string {
+        $localeAliases = [
+            'en_US' => 'en',
+            'cs_CZ' => 'cs',
+            'de_DE' => 'de',
+            'es_ES' => 'es',
+            'fr_FR' => 'fr',
+            'it_IT' => 'it',
+            'ja_JP' => 'ja',
+            'nl_NL' => 'nl',
+            'pl_PL' => 'pl',
+            'zh_CN' => 'zh',
+            'ru_RU' => 'ru',
+        ];
+        return $localeAliases[$locale] ?? $locale;
     }
 
     /**

@@ -102,26 +102,15 @@ class OracleClient extends HttpClient {
             $names = $results['items'] ?? null;
 
             foreach($names as $name){
-                $id = $this->getTailNumber($name['href']);
                 $resultName = $this->get($name['href'])->getBody() ?? null;
-                $translations[$id]['name']['value'] = str_replace(' ', '%20', $resultName['labelText']);
-                $translations[$id]['name']['locale'] = $resultName['language']['lookupName'];
+                $locale = $resultName['language']['lookupName'];
+                yield [[
+                    'propertyName' => 'name',
+                    'translation' => $resultName['labelText'],
+                    'locale' => $locale,
+                ]];
             }
         }
-
-        if($translateDescription){
-            $results = $this->get("/services/rest/connect/latest/serviceCategories/{$categoryID}/descriptions/")->getBody();
-            $descriptions = $results['items'] ?? null;
-
-            foreach($descriptions as $description){
-                $id = $this->getTailNumber($description['href']);
-                $resultDesc = $this->get($description['href'])->getBody() ?? null;
-                $translations[$id]['description']['value'] = $resultDesc['labelText'];
-                $translations[$id]['description']['locale'] = $resultDesc['language']['lookupName'];
-            }
-        }
-
-        return $translations;
     }
 
     /**
