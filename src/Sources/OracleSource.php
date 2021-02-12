@@ -104,7 +104,6 @@ class OracleSource extends AbstractSource {
      * @return iterable
      */
     private function processKnowledgeCategories() {
-//        [$perPage, $pageFrom] = $this->getPaginationInformation();
         [$pageLimit, $pageFrom, $pageTo] = $this->getPaginationInformation();
 
         for ($page = $pageFrom; $page <= $pageTo; $page++) {
@@ -112,7 +111,7 @@ class OracleSource extends AbstractSource {
             $categories = $this->oracle->getCategories(['offset' => $offset, 'limit' => $pageLimit]);
             $knowledgeCategories = $this->transform($categories, [
                 'foreignID' => ['column' => 'id', 'filter' => [$this, 'addPrefix']],
-                "knowledgeBaseID" => ['placeholder' => $this->config['kb']['knowledgeBaseID']],
+                'knowledgeBaseID' => ['placeholder' => $this->config['kb']['knowledgeBaseID']],
                 'name' => 'lookupName',
                 'parentID' => ['placeholder' => $this->config['kb']['rootKnowledgeCategory']],
             ]);
@@ -160,28 +159,23 @@ class OracleSource extends AbstractSource {
         $importProduct = $this->config['import']['products'];
         $importVariables = $this->config['import']['variables'];
 
-//        if($importProduct){
-//            $this->oracle->getProducts();
-//        }
-
-//        if($importVariables){
-//            $this->oracle->getVariables();
-//        }
-
+        if($importProduct){
+            $this->oracle->getProducts();
+        }
 
         [$pageLimit, $pageFrom, $pageTo] = $this->getPaginationInformation();
 
         for ($page = $pageFrom; $page <= $pageTo; $page++) {
             $offset = ($page -1) * $pageLimit;
             $articles = $this->oracle->getArticles(['offset' => $offset, 'limit' => $pageLimit], $locales, $importProduct ,$importVariables);
-//            $articles = $results['items'];
-            $knowledgeArticles = $this->transform($articles, [
+
+            $knowledgeArticles = $this->transform($articles['items'], [
                 'articleID' => ['column' => 'id'],
-                'foreignID' => ['column' => 'id', 'filter' => [$this, 'addPrefix']],
-                'knowledgeCategoryID' =>  ['column' => 'knowledgeCategoryID', 'filter' => [$this, 'addPrefix']],
+                'foreignID' => ['column' => 'foreignID', 'filter' => [$this, 'addPrefix']],
+                'knowledgeCategoryID' => ['column' => 'knowledgeCategoryID', 'filter' => [$this, 'addPrefix']],
                 'format' => ['placeholder' => 'html'],
-                'locale' => ['column' => 'locale', 'filter' => [$this, 'transformLocale']],
-                'name' => ['column' => 'name'],
+                'locale' => ['placeholder' => 'en'],
+                'name' => ['column' => 'summary'],
                 'body' => ['column' => 'body'],
                 'skip' => ['placeholder' => false],
                 'dateUpdated' => ['column' => 'createdTime'],
@@ -275,7 +269,6 @@ class OracleSource extends AbstractSource {
         $pageTo = $this->config['pageTo'] ?? self::PAGE_END;
 
         return array($pageLimit, $pageFrom, $pageTo);
-//        return array($pageLimit, $pageFrom);
     }
 
 
@@ -297,10 +290,6 @@ class OracleSource extends AbstractSource {
         }
 
         return $locale;
-    }
-
-    protected function getCategoryParentID($parent){
-
     }
 
     /**

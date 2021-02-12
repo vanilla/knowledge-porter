@@ -228,37 +228,32 @@ class OracleClient extends HttpClient {
      */
     public function getArticles(array $query = [], array $locales, bool $importProducts = false, bool $importVariables = false): iterable {
         $queryParams = empty($query) ? "" : "&". http_build_query($query);
-        $answers = $this->get("/services/rest/connect/latest/answers?fields=language".$queryParams)->getBody() ?? null;
+        $results = $this->get("/services/rest/connect/latest/answers?fields=language,question,solution,summary,keywords".$queryParams)->getBody() ?? null;
         $products = '';
-        $results = [];
 
-        foreach ($answers['items'] as $item) {
+        foreach ($results['items'] as &$item) {
+
             $locale = $item['language']['lookupName'];
             $skip = !in_array($locale, $locales);
+            $item['skip'] = $skip;
+            $item['locale'] = $locale;
+            $item['foreignID'] = $item['id'] . '-' . $locale;
 
-            if(!$skip){
-
-                if($importProducts){
-                    $products = $this->getArticleProduct($item['id']);
-                }
-
-                $article = $this->get("/services/rest/connect/latest/answers/" . $item['id'])->getBody() ?? [];
-                $article['skip'] = $skip;
-                $article['locale'] = $locale;
-                $article['articleID'] = $this->getSiblingArticleID($article['id']);
-                $article['knowledgeCategoryID'] = $this->getArticleCategory($article['id']);
-                //$articles['items'][$id]['oracleUserID'] = $this->getTailNumber($article['updatedByAccount']['links'][0]['href']);
-
-                $article['name'] = $article['summary'];
-                $body = $article['question'].' '.$article['solution'];
-
-                if($importVariables){
-                    $body = $this->replaceVariables($body, $article['language']['id']);
-                }
-
-                $article['body'] = $body . $this->formatKeywords($article['keywords'], $products);
-                $results[] = $article;
+            if($importProducts){
+                $products = $this->getArticleProduct($item['id']);
             }
+
+            // $item['articleID'] = $this->getSiblingArticleID($item['id']);
+            $item['knowledgeCategoryID'] = $this->getArticleCategory($item['id']);
+
+            $body = $item['question']. ' ' . $item['solution'];
+
+            if($importVariables){
+                $body = $this->replaceVariables($body, $item['language']['id']);
+            }
+
+            $item['body'] = $body . $this->formatKeywords($item['keywords'], $products);
+
         }
 
         return $results;
@@ -289,7 +284,7 @@ class OracleClient extends HttpClient {
 
         foreach ($results['items'] as $item) {
             $variableID = $item['id'];
-            $macro = $item['lookupName'];
+            $macro = '$' . $item['lookupName'];
             $interfaceValues = $this->get("/services/rest/connect/v1.4/variables/{$variableID}/interfaceValues")->getBody() ?? null;
 
             foreach ($interfaceValues['items'] as $localization){
