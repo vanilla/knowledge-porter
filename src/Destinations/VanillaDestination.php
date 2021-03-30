@@ -571,11 +571,10 @@ class VanillaDestination extends AbstractDestination {
                         $skipped++;
                     }
                 } catch (HttpResponseException $ex) {
-                    if ($ex->getCode() == 409) {
+                    if ($ex->getCode() != 404) {
                         $this->logger->warning($ex->getMessage() . " failed to import article.");
                         continue;
                     }
-
                     if (!empty($row['userData'])) {
                         $user = $this->getOrCreateUser($row['userData']);
                         $row['updateUserID'] = $user['userID'];
