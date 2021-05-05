@@ -196,7 +196,12 @@ class VanillaDestination extends AbstractDestination {
                 // $row contains all fields needed for translation api
                 // $patch has only 'translation' field if
                 // we use $patch as trigger, but $row as a body for translation
-                $res = $this->vanillaApi->patch('/api/v2/translations/kb', [$row]);
+                try {
+                    $res = $this->vanillaApi->patch('/api/v2/translations/kb', [$row]);
+                } catch (HttpResponseException $ex) {
+                    $this->logger->info($ex->getMessage());
+                    continue;
+                }
             }
         }
     }
@@ -571,11 +576,10 @@ class VanillaDestination extends AbstractDestination {
                         $skipped++;
                     }
                 } catch (HttpResponseException $ex) {
-                    if ($ex->getCode() == 409) {
+                    if ($ex->getCode() != 404) {
                         $this->logger->warning($ex->getMessage() . " failed to import article.");
                         continue;
                     }
-
                     if (!empty($row['userData'])) {
                         $user = $this->getOrCreateUser($row['userData']);
                         $row['updateUserID'] = $user['userID'];
