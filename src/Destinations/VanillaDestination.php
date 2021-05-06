@@ -196,7 +196,12 @@ class VanillaDestination extends AbstractDestination {
                 // $row contains all fields needed for translation api
                 // $patch has only 'translation' field if
                 // we use $patch as trigger, but $row as a body for translation
-                $res = $this->vanillaApi->patch('/api/v2/translations/kb', [$row]);
+                try {
+                    $res = $this->vanillaApi->patch('/api/v2/translations/kb', [$row]);
+                } catch (HttpResponseException $ex) {
+                    $this->logger->info($ex->getMessage());
+                    continue;
+                }
             }
         }
     }
