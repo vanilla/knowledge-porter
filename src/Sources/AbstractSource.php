@@ -55,20 +55,6 @@ abstract class AbstractSource implements LoggerAwareInterface {
      */
    abstract public function getFileRehostingHeaders(): array;
 
-//    /**
-//     * Apply transformation rules to row set.
-//     *
-//     * @param iterable $rows
-//     * @param array $transformer
-//     * @return array
-//     */
-//    public function transform(iterable $rows, array $transformer): array {
-//        foreach ($rows as $row) {
-//            $x[] =  $this->transformRow($row, $transformer);
-//        }
-//        return $x;
-//    }
-
     /**
      * Apply transformation rules to row set.
      *

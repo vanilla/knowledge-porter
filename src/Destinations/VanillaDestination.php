@@ -416,11 +416,6 @@ class VanillaDestination extends AbstractDestination {
                     } else {
                         try {
                             // Try to create the missing knowledgeCategory.
-/*<HACK>*/
-//                            var_export($row); die();
-//                            $row['knowledgeBaseID'] = 2;
-//                            $row['parentID'] = -1;
-/*</HACK>*/
                             $kbCat = $this->vanillaApi->post('/api/v2/knowledge-categories', $row)->getBody();
                             $added++;
                         } catch (HttpResponseException $ex) {
