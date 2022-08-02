@@ -266,7 +266,7 @@ class VanillaDestination extends AbstractDestination {
                 }
             }
 
-            if (($existingTranslation['translationStatus'] ?? null) === "not-translated") {
+            if ((($existingTranslation['translationStatus'] ?? null) === "not-translated") || (!is_array($existingTranslation))) {
                 $existingTranslation = [];
             }
 

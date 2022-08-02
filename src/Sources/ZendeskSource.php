@@ -257,6 +257,9 @@ class ZendeskSource extends AbstractSource {
                     }
                     /** @var iterable $translation */
                     $translation = $this->zendesk->getArticleTranslations($this->trimPrefix($kbArticle['foreignID']));
+                    // $translation['body'] _can_ be null & the prepareBody() function only takes strings.
+//                    $translation['body'] = $translation['body'] . '';
+                    var_export($translation);
                     $kbTranslations = $this->transform($translation, [
                         'articleID' => ["placeholder" => $kbArticle['articleID']],
                         'knowledgeCategoryID' => ["placeholder" => $kbArticle['knowledgeCategoryID']],
@@ -480,19 +483,22 @@ class ZendeskSource extends AbstractSource {
     }
 
     /**
-     * Prepeare article body: parse uerls and parse attachments if neeeded
+     * Prepare article body: parse urls and parse attachments if needed.
      *
-     * @param string $body
+     * @param string|null $body
      * @param array $row
      * @return string
      */
-    protected function prepareBody(string $body, array $row): string {
-        $body = $this->parseUrls($body);
-        if ($this->config['import']['attachments'] ?? false) {
-            $body = $this->addAttachments($body, $row);
-            return $body;
+    protected function prepareBody(?string $body = null, array $row): string {
+        $returnBody = "";
+        if (is_string($body)) {
+            $returnBody = $this->parseUrls($body);
+            if ($this->config['import']['attachments'] ?? false) {
+                $returnBody = $this->addAttachments($returnBody, $row);
+            }
         }
-        return $body;
+
+        return $returnBody;
     }
 
     /**
