@@ -257,9 +257,6 @@ class ZendeskSource extends AbstractSource {
                     }
                     /** @var iterable $translation */
                     $translation = $this->zendesk->getArticleTranslations($this->trimPrefix($kbArticle['foreignID']));
-                    // $translation['body'] _can_ be null & the prepareBody() function only takes strings.
-//                    $translation['body'] = $translation['body'] . '';
-                    var_export($translation);
                     $kbTranslations = $this->transform($translation, [
                         'articleID' => ["placeholder" => $kbArticle['articleID']],
                         'knowledgeCategoryID' => ["placeholder" => $kbArticle['knowledgeCategoryID']],
