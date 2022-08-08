@@ -266,7 +266,7 @@ class VanillaDestination extends AbstractDestination {
                 }
             }
 
-            if (($existingTranslation['translationStatus'] ?? null) === "not-translated") {
+            if ((($existingTranslation['translationStatus'] ?? null) === "not-translated") || (!is_array($existingTranslation))) {
                 $existingTranslation = [];
             }
 
@@ -415,6 +415,7 @@ class VanillaDestination extends AbstractDestination {
                         continue;
                     } else {
                         try {
+                            // Try to create the missing knowledgeCategory.
                             $kbCat = $this->vanillaApi->post('/api/v2/knowledge-categories', $row)->getBody();
                             $added++;
                         } catch (HttpResponseException $ex) {
