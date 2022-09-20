@@ -40,7 +40,6 @@ class HttpRateLimitMiddleware implements LoggerAwareInterface
             );
         }
 
-        sleep(max($sleep, 1));
         $response = $next($request);
 
         return $response;
