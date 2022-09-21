@@ -30,18 +30,19 @@ class HttpRateLimitMiddleware implements LoggerAwareInterface
     {
         /** @var HttpResponse $response */
         $response = $next($request);
-        $sleep = (int) $response->getHeader("Retry-After") + 1;
 
-        if ($sleep > 1) {
-            // Only log cases when the rate limit is higher than the default 1 sec.
+        if (
+            $response->getStatusCode() === 429 &&
+            $response->hasHeader("Retry-After")
+        ) {
+            $sleep = (int) $response->getHeader("Retry-After") + 1;
             $this->logger->info(
                 "Rate limit reached, sleeping for {sleep} second(s).",
                 ["sleep" => $sleep]
             );
+            sleep(max($sleep, 1));
+            $response = $next($request);
         }
-
-        $response = $next($request);
-
         return $response;
     }
 }
