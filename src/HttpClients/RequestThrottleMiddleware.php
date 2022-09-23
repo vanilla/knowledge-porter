@@ -13,7 +13,7 @@ use Garden\Http\HttpResponse;
 /**
  * A middleware that will handle API rate limits for ZenDesk and retry after the cooldown period.
  */
-class RateLimiterMiddleware
+class RequestThrottleMiddleware
 {
     protected $lastRequestTime = null;
 
@@ -26,14 +26,14 @@ class RateLimiterMiddleware
      */
     public function __invoke(HttpRequest $request, callable $next): HttpResponse
     {
-        $this->lastRequestTime = $this->lastRequestTime ?? time();
-
-        while (time() < $this->lastRequestTime + 1) {
-            sleep(1);
+        $minRequestMicroTime = 1000 * 1000 * 1000;
+        $this->lastRequestMicrotime =
+            $this->lastRequestMicrotime ?? microtime(true);
+        $diff = microtime(true) - $this->lastRequestMicrotime;
+        if ($diff < $minRequestMicroTime) {
+            usleep($diff);
         }
-
-        $this->lastRequestTime = time();
-
+        $this->lastRequestMicrotime = microtime(true);
         return $next($request);
     }
 }

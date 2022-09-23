@@ -23,7 +23,7 @@ use Symfony\Component\Cache\Simple\ChainCache;
 use Vanilla\KnowledgePorter\Commands\AbstractCommand;
 use Vanilla\KnowledgePorter\HttpClients\HttpRateLimitMiddleware;
 use Vanilla\KnowledgePorter\HttpClients\VanillaClient;
-use Vanilla\KnowledgePorter\HttpClients\RateLimiterMiddleware;
+use Vanilla\KnowledgePorter\HttpClients\RequestThrottleMiddleware;
 use Vanilla\KnowledgePorter\HttpClients\ZendeskClient;
 use Garden\Container\ContainerException;
 use Garden\Container\NotFoundException;
@@ -161,15 +161,12 @@ final class Main
             ->setShared(true)
             ->rule(ZendeskClient::class)
             ->addCall("addMiddleware", [
-                new Reference(RateLimiterMiddleware::class),
-            ])
-            ->addCall("addMiddleware", [
                 new Reference(HttpRateLimitMiddleware::class),
             ])
             ->setShared(false)
             ->rule(VanillaClient::class)
             ->addCall("addMiddleware", [
-                new Reference(RateLimiterMiddleware::class),
+                new Reference(RequestThrottleMiddleware::class),
             ])
             ->addCall("addMiddleware", [
                 new Reference(HttpRateLimitMiddleware::class),
