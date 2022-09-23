@@ -15,7 +15,8 @@ use Psr\Log\LoggerAwareTrait;
 /**
  * A middleware that will handle API rate limits for ZenDesk and retry after the cooldown period.
  */
-class HttpRateLimitMiddleware implements LoggerAwareInterface {
+class HttpRateLimitMiddleware implements LoggerAwareInterface
+{
     use LoggerAwareTrait;
 
     /**
@@ -25,14 +26,20 @@ class HttpRateLimitMiddleware implements LoggerAwareInterface {
      * @param callable $next
      * @return HttpResponse
      */
-    public function __invoke(HttpRequest $request, callable $next): HttpResponse {
+    public function __invoke(HttpRequest $request, callable $next): HttpResponse
+    {
         /** @var HttpResponse $response */
         $response = $next($request);
 
-
-        if ($response->getStatusCode() === 429 && $response->hasHeader('Retry-After')) {
-            $sleep = (int)$response->getHeader('Retry-After') + 1;
-            $this->logger->info("Rate limit reached, sleeping for {sleep} second(s).", ['sleep' => $sleep]);
+        if (
+            $response->getStatusCode() === 429 &&
+            $response->hasHeader("Retry-After")
+        ) {
+            $sleep = (int) $response->getHeader("Retry-After") + 1;
+            $this->logger->info(
+                "Rate limit reached, sleeping for {sleep} second(s).",
+                ["sleep" => $sleep]
+            );
             sleep(max($sleep, 1));
             $response = $next($request);
         }

@@ -23,6 +23,7 @@ use Symfony\Component\Cache\Simple\ChainCache;
 use Vanilla\KnowledgePorter\Commands\AbstractCommand;
 use Vanilla\KnowledgePorter\HttpClients\HttpRateLimitMiddleware;
 use Vanilla\KnowledgePorter\HttpClients\VanillaClient;
+use Vanilla\KnowledgePorter\HttpClients\RequestThrottleMiddleware;
 use Vanilla\KnowledgePorter\HttpClients\ZendeskClient;
 use Garden\Container\ContainerException;
 use Garden\Container\NotFoundException;
@@ -32,7 +33,8 @@ use Exception;
 /**
  * The main program loop.
  */
-final class Main {
+final class Main
+{
     /**
      * @var Container
      */
@@ -48,7 +50,8 @@ final class Main {
      *
      * @throws Exception
      */
-    public function __construct() {
+    public function __construct()
+    {
         $this->container = $this->createContainer();
         $this->cli = $this->createCli();
     }
@@ -62,7 +65,8 @@ final class Main {
      * @throws NotFoundException
      * @throws Exception
      */
-    public function run(array $argv): int {
+    public function run(array $argv): int
+    {
         $args = $this->cli->parse($argv);
 
         // Set the args in the container so they can be injected into classes.
@@ -70,13 +74,19 @@ final class Main {
 
         try {
             // This is a basic method for each command. You could also create command objects if you would like.
-            $className = '\\Vanilla\\KnowledgePorter\\Commands\\'.self::changeCase($args->getCommand()).'Command';
+            $className =
+                "\\Vanilla\\KnowledgePorter\\Commands\\" .
+                self::changeCase($args->getCommand()) .
+                "Command";
             if ($this->container->has($className)) {
                 /* @var AbstractCommand $command */
                 $command = $this->container->get($className);
                 $command->run();
             } else {
-                throw new InvalidArgumentException("Cannot find a class for command: ".$args->getCommand(), 1);
+                throw new InvalidArgumentException(
+                    "Cannot find a class for command: " . $args->getCommand(),
+                    1
+                );
             }
 
             return 0;
@@ -95,15 +105,15 @@ final class Main {
      * @return Cli
      * @throws Exception
      */
-    private function createCli(): Cli {
+    private function createCli(): Cli
+    {
         $cli = new Cli();
 
-        $cli->command('import')
-            ->description('Import a knowledge base from a source.')
-            ->opt('config:c', 'The path to the import config.', true)
-            ->opt('src-type', 'The type of knowledge base being imported.')
-            ->opt('dest-type', 'The target of the knowledge base import.')
-        ;
+        $cli->command("import")
+            ->description("Import a knowledge base from a source.")
+            ->opt("config:c", "The path to the import config.", true)
+            ->opt("src-type", "The type of knowledge base being imported.")
+            ->opt("dest-type", "The target of the knowledge base import.");
 
         return $cli;
     }
@@ -113,11 +123,11 @@ final class Main {
      *
      * @return Container
      */
-    private function createContainer(): Container {
+    private function createContainer(): Container
+    {
         $di = new Container();
 
-        $di
-            ->setInstance(Container::class, $di)
+        $di->setInstance(Container::class, $di)
             ->defaultRule()
             ->setShared(true)
             ->rule(ContainerInterface::class)
@@ -125,34 +135,43 @@ final class Main {
             ->rule(LoggerInterface::class)
             ->setAliasOf(TaskLogger::class)
             ->rule(TaskLogger::class)
-            ->setConstructorArgs(['logger' => new Reference(StreamLogger::class)])
+            ->setConstructorArgs([
+                "logger" => new Reference(StreamLogger::class),
+            ])
             ->setShared(true)
             ->rule(LoggerAwareInterface::class)
-            ->addCall('setLogger')
+            ->addCall("setLogger")
             ->rule(TaskLoggerAwareInterface::class)
-            ->addCall('setLogger')
-        ;
+            ->addCall("setLogger");
 
-
-        $di
-            ->rule(LoggerAwareInterface::class)
-            ->addCall('setLogger')
+        $di->rule(LoggerAwareInterface::class)
+            ->addCall("setLogger")
             ->rule(CacheInterface::class)
             ->setClass(ChainCache::class)
             ->setFactory(function (): CacheInterface {
-                $fileCache = new FilesystemAdapter('knowledge-porter', strtotime('12 hours'), './cache');
+                $fileCache = new FilesystemAdapter(
+                    "knowledge-porter",
+                    strtotime("12 hours"),
+                    "./cache"
+                );
                 $r = new Psr16Cache($fileCache);
 
                 return $r;
             })
             ->setShared(true)
             ->rule(ZendeskClient::class)
-            ->addCall('addMiddleware', [new Reference(HttpRateLimitMiddleware::class)])
+            ->addCall("addMiddleware", [
+                new Reference(HttpRateLimitMiddleware::class),
+            ])
             ->setShared(false)
             ->rule(VanillaClient::class)
-            ->addCall('addMiddleware', [new Reference(HttpRateLimitMiddleware::class)])
-            ->setShared(false)
-        ;
+            ->addCall("addMiddleware", [
+                new Reference(RequestThrottleMiddleware::class),
+            ])
+            ->addCall("addMiddleware", [
+                new Reference(HttpRateLimitMiddleware::class),
+            ])
+            ->setShared(false);
 
         return $di;
     }
@@ -163,10 +182,11 @@ final class Main {
      * @param string $kebabCase
      * @return string
      */
-    public static function changeCase(string $kebabCase): string {
-        $parts = explode('-', $kebabCase);
-        $parts = array_map('ucfirst', $parts);
-        $result = implode('', $parts);
+    public static function changeCase(string $kebabCase): string
+    {
+        $parts = explode("-", $kebabCase);
+        $parts = array_map("ucfirst", $parts);
+        $result = implode("", $parts);
 
         return $result;
     }
