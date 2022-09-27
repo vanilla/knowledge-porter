@@ -7,8 +7,6 @@
 
 namespace Vanilla\KnowledgePorter\Destinations;
 
-use Exception;
-use Garden\Cli\TaskLogger;
 use Garden\Http\HttpResponse;
 use Garden\Http\HttpResponseException;
 use Garden\Schema\Schema;
@@ -20,7 +18,6 @@ use Vanilla\KnowledgePorter\HttpClients\HttpLogMiddleware;
 use Vanilla\KnowledgePorter\HttpClients\HttpVanillaCloudRateLimitBypassMiddleware;
 use Vanilla\KnowledgePorter\HttpClients\NotFoundException;
 use Vanilla\KnowledgePorter\HttpClients\VanillaClient;
-use Vanilla\KnowledgePorter\Utils\ApiPaginationIterator;
 
 /**
  * Class VanillaDestination
