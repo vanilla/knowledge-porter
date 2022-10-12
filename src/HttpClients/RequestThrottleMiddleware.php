@@ -26,12 +26,12 @@ class RequestThrottleMiddleware
      */
     public function __invoke(HttpRequest $request, callable $next): HttpResponse
     {
-        $minRequestMicroTime = 1000 * 1000 * 1000;
+        $minRequestMicroTime = 1000 * 1000;
         $this->lastRequestMicrotime =
             $this->lastRequestMicrotime ?? microtime(true);
         $diff = microtime(true) - $this->lastRequestMicrotime;
         if ($diff < $minRequestMicroTime) {
-            usleep($diff);
+            usleep($minRequestMicroTime - $diff);
         }
         $this->lastRequestMicrotime = microtime(true);
         return $next($request);
