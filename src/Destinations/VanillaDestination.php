@@ -732,6 +732,12 @@ class VanillaDestination extends AbstractDestination
                         if (!empty($user)) {
                             $patch["updateUserID"] = $user["userID"];
                         }
+
+                        // We want to use dateUpdated for the new revision date.
+                        if (isset($patch["dateUpdated"])) {
+                            $patch["dateInserted"] = $patch["dateUpdated"];
+                        }
+
                         $response = $this->vanillaApi->patch(
                             "/api/v2/articles/" . $existingArticle["articleID"],
                             array_merge($patch, $rehostFileParams)
@@ -1005,7 +1011,7 @@ class VanillaDestination extends AbstractDestination
         $updateMode = $this->config["update"] ?? self::UPDATE_MODE_ON_CHANGE;
         switch ($updateMode) {
             case self::UPDATE_MODE_ALWAYS:
-                $res = $new;
+                $res = $this->getArticleEditFields($new, $extra);
                 break;
             case self::UPDATE_MODE_ON_CHANGE:
                 $res = $this->compareFields($existing, $new, $extra);
@@ -1014,12 +1020,10 @@ class VanillaDestination extends AbstractDestination
                 if ($existing[self::DATE_UPDATED] ?? 0) {
                     $existingDate = strtotime($existing[self::DATE_UPDATED]);
                     $newDate = strtotime($new[self::DATE_UPDATED]);
-                    $res =
-                        $existingDate < $newDate
-                            ? $this->compareFields($existing, $new, $extra)
-                            : [];
-                } else {
-                    $res = $this->compareFields($existing, $new, $extra);
+
+                    if ($existingDate < $newDate) {
+                        $res = $this->getArticleEditFields($new, $extra);
+                    }
                 }
                 break;
             default:
@@ -1194,5 +1198,23 @@ class VanillaDestination extends AbstractDestination
                 "$numberOfArticlesDeleted articles were deleted."
             );
         }
+    }
+
+    protected function getArticleEditFields(array $row, $allowed)
+    {
+        $res = [];
+        foreach ($allowed as $key) {
+            if (!isset($row[$key])) {
+                continue;
+            }
+
+            if (is_array($row[$key])) {
+                $res[] = $this->getArticleEditFields($row[$key], $allowed);
+            } else {
+                $res[$key] = $row[$key];
+            }
+        }
+
+        return $res;
     }
 }
