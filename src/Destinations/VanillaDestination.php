@@ -733,11 +733,6 @@ class VanillaDestination extends AbstractDestination
                             $patch["updateUserID"] = $user["userID"];
                         }
 
-                        // We want to use dateUpdated for the new revision date.
-                        if (isset($patch["dateUpdated"])) {
-                            $patch["dateInserted"] = $patch["dateUpdated"];
-                        }
-
                         $response = $this->vanillaApi->patch(
                             "/api/v2/articles/" . $existingArticle["articleID"],
                             array_merge($patch, $rehostFileParams)
