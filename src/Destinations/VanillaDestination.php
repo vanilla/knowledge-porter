@@ -992,31 +992,31 @@ class VanillaDestination extends AbstractDestination
      *
      * @param array $existing
      * @param array $new
-     * @param array $extra
+     * @param array $fieldsMap
      * @param string|null $skipLogName
      * @return array
      */
     private function updateFields(
         array $existing,
         array $new,
-        array $extra,
+        array $fieldsMap,
         ?string $skipLogName = null
     ): array {
         $res = [];
         $updateMode = $this->config["update"] ?? self::UPDATE_MODE_ON_CHANGE;
         switch ($updateMode) {
             case self::UPDATE_MODE_ALWAYS:
-                $res = $this->getArticleEditFields($new, $extra);
+                $res = $this->resolveUpdateFields($new, $fieldsMap);
                 break;
             case self::UPDATE_MODE_ON_CHANGE:
-                $res = $this->compareFields($existing, $new, $extra);
+                $res = $this->compareFields($existing, $new, $fieldsMap);
                 break;
             case self::UPDATE_MODE_ON_DATE:
                 $existingDate = strtotime($existing[self::DATE_UPDATED]);
                 $newDate = strtotime($new[self::DATE_UPDATED]);
 
                 if ($existingDate < $newDate) {
-                    $res = $this->getArticleEditFields($new, $extra);
+                    $res = $this->resolveUpdateFields($new, $fieldsMap);
                 }
 
                 break;
@@ -1194,17 +1194,25 @@ class VanillaDestination extends AbstractDestination
         }
     }
 
-    protected function getArticleEditFields(array $row, $allowed)
+    /**
+     * Map the fields. If the field is a call back, do the callback first.
+     *
+     * @param array $row
+     * @param array $fieldsMap
+     * @return array
+     */
+    protected function resolveUpdateFields(array $row, array $fieldsMap): array
     {
         $res = [];
-        foreach ($allowed as $key) {
-            if (!isset($row[$key])) {
-                continue;
+        foreach ($fieldsMap as $field) {
+            if (is_array($field)) {
+                $key = $field[0];
+                $row[$key] = $this->{$field[1]}($row[$key]);
+            } else {
+                $key = $field;
             }
 
-            if (is_array($row[$key])) {
-                $res[] = $this->getArticleEditFields($row[$key], $allowed);
-            } else {
+            if (isset($row[$key])) {
                 $res[$key] = $row[$key];
             }
         }
