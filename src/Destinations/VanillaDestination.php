@@ -732,6 +732,7 @@ class VanillaDestination extends AbstractDestination
                         if (!empty($user)) {
                             $patch["updateUserID"] = $user["userID"];
                         }
+
                         $response = $this->vanillaApi->patch(
                             "/api/v2/articles/" . $existingArticle["articleID"],
                             array_merge($patch, $rehostFileParams)
@@ -991,36 +992,33 @@ class VanillaDestination extends AbstractDestination
      *
      * @param array $existing
      * @param array $new
-     * @param array $extra
+     * @param array $fieldsMap
      * @param string|null $skipLogName
      * @return array
      */
     private function updateFields(
         array $existing,
         array $new,
-        array $extra,
+        array $fieldsMap,
         ?string $skipLogName = null
     ): array {
         $res = [];
         $updateMode = $this->config["update"] ?? self::UPDATE_MODE_ON_CHANGE;
         switch ($updateMode) {
             case self::UPDATE_MODE_ALWAYS:
-                $res = $new;
+                $res = $this->resolveUpdateFields($new, $fieldsMap);
                 break;
             case self::UPDATE_MODE_ON_CHANGE:
-                $res = $this->compareFields($existing, $new, $extra);
+                $res = $this->compareFields($existing, $new, $fieldsMap);
                 break;
             case self::UPDATE_MODE_ON_DATE:
-                if ($existing[self::DATE_UPDATED] ?? 0) {
-                    $existingDate = strtotime($existing[self::DATE_UPDATED]);
-                    $newDate = strtotime($new[self::DATE_UPDATED]);
-                    $res =
-                        $existingDate < $newDate
-                            ? $this->compareFields($existing, $new, $extra)
-                            : [];
-                } else {
-                    $res = $this->compareFields($existing, $new, $extra);
+                $existingDate = strtotime($existing[self::DATE_UPDATED]);
+                $newDate = strtotime($new[self::DATE_UPDATED]);
+
+                if ($existingDate < $newDate) {
+                    $res = $this->resolveUpdateFields($new, $fieldsMap);
                 }
+
                 break;
             default:
                 die("Improper update mode. This should not occur");
@@ -1194,5 +1192,31 @@ class VanillaDestination extends AbstractDestination
                 "$numberOfArticlesDeleted articles were deleted."
             );
         }
+    }
+
+    /**
+     * Map the fields. If the field is a call back, do the callback first.
+     *
+     * @param array $row
+     * @param array $fieldsMap
+     * @return array
+     */
+    protected function resolveUpdateFields(array $row, array $fieldsMap): array
+    {
+        $res = [];
+        foreach ($fieldsMap as $field) {
+            if (is_array($field)) {
+                $key = $field[0];
+                $row[$key] = $this->{$field[1]}($row[$key]);
+            } else {
+                $key = $field;
+            }
+
+            if (isset($row[$key])) {
+                $res[$key] = $row[$key];
+            }
+        }
+
+        return $res;
     }
 }
