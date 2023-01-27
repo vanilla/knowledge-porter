@@ -8,7 +8,7 @@
         "php": ">=8.1",
         "ext-json": "*",
         "vanilla/garden-cli": "*",
-        "vanilla/garden-container": "^3.0",
+        "vanilla/garden-container": "^4.0",
         "vanilla/garden-schema": "~1.10.2",
         "vanilla/garden-http": "^2.1",
         "psr/log": "*",
