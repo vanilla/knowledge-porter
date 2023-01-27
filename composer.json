@@ -13,7 +13,7 @@
         "vanilla/garden-http": "^2.1",
         "psr/log": "^3.0",
         "psr/simple-cache": "*",
-        "symfony/cache": "^4.1",
+        "symfony/cache": "*",
         "ext-dom": "*",
         "ext-mbstring": "*",
         "ext-libxml": "*"
