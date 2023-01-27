@@ -17,6 +17,11 @@ class KayakoXmlAdapter {
     /** @var string $baseDir */
     private $baseDir;
 
+    public function __construct()
+    {
+        $this->ROOT_PATH = dirname(__DIR__ ,2);
+    }
+
     /**
      * Set base directory for xml reader.
      *
@@ -46,7 +51,7 @@ class KayakoXmlAdapter {
      * @throws \Exception
      */
     protected function getXml($file): \SimpleXMLElement {
-        $file = ROOT_PATH.'/'.$this->baseDir.'/'.$file;
+        $file = $this->ROOT_PATH.'/'.$this->baseDir.'/'.$file;
         if (!file_exists($file)) {
             throw new \Exception('File not found: '.$file, 404);
         }
@@ -146,7 +151,7 @@ class KayakoXmlAdapter {
      * @return string
      */
     public function saveFile(string $file, string $content): string {
-        $file = ROOT_PATH.'/'.$this->baseDir.'/'.$file;
+        $file = $this->ROOT_PATH.'/'.$this->baseDir.'/'.$file;
         if (!file_exists($file)) {
             file_put_contents($file, base64_decode($content));
         }
@@ -161,7 +166,7 @@ class KayakoXmlAdapter {
      * @return string
      */
     public function saveAttachmentMedia(string $file, string $content, bool $force = false) {
-        $file = ROOT_PATH.'/'.$this->baseDir.'/'.$file;
+        $file = $this->ROOT_PATH.'/'.$this->baseDir.'/'.$file;
         if ($force || !file_exists($file)) {
             file_put_contents($file, $content);
         }
@@ -175,7 +180,7 @@ class KayakoXmlAdapter {
      */
     public function getMedia(string $file): array {
         $media = [];
-        $file = ROOT_PATH.'/'.$this->baseDir.'/'.$file;
+        $file = $this->ROOT_PATH.'/'.$this->baseDir.'/'.$file;
         if (file_exists($file)) {
             $media = json_decode(file_get_contents($file), true);
         }
