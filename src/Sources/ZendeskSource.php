@@ -486,7 +486,7 @@ class ZendeskSource extends AbstractSource {
      * @param array $row
      * @return string
      */
-    protected function prepareBody(?string $body = null, array $row): string {
+    protected function prepareBody(array $row, ?string $body = null): string {
         $returnBody = "";
         if (is_string($body)) {
             $returnBody = $this->parseUrls($body);
@@ -538,7 +538,8 @@ HTML;
 
         $links = $dom->getElementsByTagName('a');
         foreach ($links as $link) {
-            $parseUrl = parse_url($link->getAttribute('href'));
+            $url = str_replace('\"', '', $link->getAttribute('href'));
+            $parseUrl = parse_url($url);
             $host  = $parseUrl['host'] ?? null;
             if ($host === $sourceDomain) {
                 $newLink = str_replace($host, $targetBaseUrl.'/kb/articles/aliases/'.$prefix, $link->getAttribute('href'));
@@ -567,6 +568,7 @@ HTML;
         $children  = $element->childNodes;
 
         foreach ($children as $child) {
+            $t = $element->ownerDocument->saveHTML($child);
             $innerHTML .= $element->ownerDocument->saveHTML($child);
         }
 
