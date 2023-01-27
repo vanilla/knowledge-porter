@@ -5,7 +5,7 @@
     "authors": [
     ],
     "require": {
-        "php": ">=8.1",
+        "php": "^8.1",
         "ext-json": "*",
         "vanilla/garden-cli": "*",
         "vanilla/garden-container": "^4.0",
