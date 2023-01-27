@@ -7,11 +7,11 @@
     "require": {
         "php": "^8.1",
         "ext-json": "*",
-        "vanilla/garden-cli": "^2.2",
+        "vanilla/garden-cli": "^4.0",
         "vanilla/garden-container": "^4.0",
         "vanilla/garden-schema": "~1.10.2",
         "vanilla/garden-http": "^2.1",
-        "psr/log": "*",
+        "psr/log": "^3.0",
         "psr/simple-cache": "*",
         "symfony/cache": "^4.1",
         "ext-dom": "*",
