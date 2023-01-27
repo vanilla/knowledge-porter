@@ -1113,7 +1113,7 @@ class VanillaDestination extends AbstractDestination
      */
     public function deleteArchivedArticles(
         array $knowledgeBases,
-        array $zenDeskArticles,
+        array $articles,
         string $prefix = ""
     ) {
         // 5. Grab all the knowledge categories associated with the ZenDesk kbs.
@@ -1130,7 +1130,7 @@ class VanillaDestination extends AbstractDestination
         }
 
         // 6. Retrieve all the articles from each kb category.
-        $articles = [];
+        $fetchedArticles = [];
         foreach ($knowledgeCategories as $knowledgeCategory) {
             $articleCount = $knowledgeCategory["articleCount"] ?? 0;
 
@@ -1153,17 +1153,17 @@ class VanillaDestination extends AbstractDestination
             }
 
             foreach ($results as $result) {
-                $articles[] = $result;
+                $fetchedArticles[] = $result;
             }
         }
         // 7. Compare the vanilla articles against the ZenDesk articles.
         $vanillaArticles = [];
-        if ($articles) {
-            foreach ($articles as &$article) {
+        if ($fetchedArticles) {
+            foreach ($fetchedArticles as &$article) {
                 $id = str_replace($prefix, "", $article["foreignID"]);
                 $vanillaArticles[$id] = $article["articleID"];
             }
-            $zenDeskIDs = array_column($zenDeskArticles, "id", "id");
+            $zenDeskIDs = array_column($articles, "id", "id");
 
             $diff = [];
             foreach ($vanillaArticles as $key => $vanillaArticle) {

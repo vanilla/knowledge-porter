@@ -17,9 +17,9 @@ use Psr\Container\ContainerInterface;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerInterface;
 use Psr\SimpleCache\CacheInterface;
+use Symfony\Component\Cache\Adapter\ChainAdapter;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Cache\Psr16Cache;
-use Symfony\Component\Cache\Simple\ChainCache;
 use Vanilla\KnowledgePorter\Commands\AbstractCommand;
 use Vanilla\KnowledgePorter\HttpClients\HttpRateLimitMiddleware;
 use Vanilla\KnowledgePorter\HttpClients\VanillaClient;
@@ -147,7 +147,7 @@ final class Main
         $di->rule(LoggerAwareInterface::class)
             ->addCall("setLogger")
             ->rule(CacheInterface::class)
-            ->setClass(ChainCache::class)
+            ->setClass( ChainAdapter::class)
             ->setFactory(function (): CacheInterface {
                 $fileCache = new FilesystemAdapter(
                     "knowledge-porter",
@@ -155,7 +155,6 @@ final class Main
                     "./cache"
                 );
                 $r = new Psr16Cache($fileCache);
-
                 return $r;
             })
             ->setShared(true)

@@ -31,7 +31,7 @@ class KayakoXmlSource extends AbstractSource {
     /**
      * KayakoXmlSource constructor.
      *
-     * @param KayakoXmlAdatpter $kayakoXml
+     * @param KayakoXmlAdapter $kayakoXml
      * @param ContainerInterface $container
      */
     public function __construct(KayakoXmlAdapter $kayakoXml, ContainerInterface $container) {
