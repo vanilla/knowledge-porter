@@ -31,7 +31,7 @@ class RequestThrottleMiddleware
             $this->lastRequestMicrotime ?? microtime(true);
         $diff = microtime(true) - $this->lastRequestMicrotime;
         if ($diff < $minRequestMicroTime) {
-            usleep($minRequestMicroTime - $diff);
+            usleep($minRequestMicroTime - (int) $diff);
         }
         $this->lastRequestMicrotime = microtime(true);
         return $next($request);

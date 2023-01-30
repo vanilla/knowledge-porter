@@ -1,0 +1,1 @@
+{"version":1,"defects":[],"times":{"Vanilla\\KnowledgePorter\\Tests\\MainTest::testChangeCase with data set \"foo\"":0.001,"Vanilla\\KnowledgePorter\\Tests\\MainTest::testChangeCase with data set \"foo-bar\"":0,"Vanilla\\KnowledgePorter\\Tests\\ZendeskSourceTest::testBasicReplaceUrls":0.005}}
