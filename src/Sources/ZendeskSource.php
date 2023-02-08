@@ -33,6 +33,8 @@ class ZendeskSource extends AbstractSource
     const DEFAULT_SOURCE_LOCALE = "en-us";
     const DEFAULT_LOCALE = "en";
 
+    const PROCESS_COMPLETED = -1;
+
     /**
      * @var ZendeskClient
      */
@@ -104,8 +106,9 @@ class ZendeskSource extends AbstractSource
 
     /**
      * Process: GET zendesk categories, POST/PATCH vanilla knowledge bases
+     * @return int
      */
-    private function processKnowledgeBases()
+    public function processKnowledgeBases(): int
     {
         [$pageLimit, $pageFrom, $pageTo] = $this->getPaginationInformation();
         $locale = $this->config["sourceLocale"] ?? self::DEFAULT_SOURCE_LOCALE;
@@ -116,7 +119,7 @@ class ZendeskSource extends AbstractSource
                 "per_page" => $pageLimit,
             ]);
             if (empty($knowledgeBases)) {
-                break;
+                return self::PROCESS_COMPLETED;
             }
             $kbs = $this->transform($knowledgeBases, [
                 "foreignID" => [
@@ -179,14 +182,16 @@ class ZendeskSource extends AbstractSource
                 }
             }
         }
+
+        return $pageTo++;
     }
 
     /**
      * Process: GET zendesk sections, POST/PATCH vanilla knowledge categories
      *
-     * @return iterable
+     * @return int
      */
-    private function processKnowledgeCategories()
+    public function processKnowledgeCategories(): int
     {
         [$pageLimit, $pageFrom, $pageTo] = $this->getPaginationInformation();
         $locale = $this->config["sourceLocale"] ?? self::DEFAULT_SOURCE_LOCALE;
@@ -200,7 +205,7 @@ class ZendeskSource extends AbstractSource
                 "per_page" => $pageLimit,
             ]);
             if (empty($categories)) {
-                break;
+                return self::PROCESS_COMPLETED;
             }
 
             $knowledgeCategories = $this->transform($categories, [
@@ -232,6 +237,13 @@ class ZendeskSource extends AbstractSource
         if ($this->config["import"]["retrySections"] ?? true) {
             $this->rerunProcessKnowledgeCategories($dest);
         }
+
+        $nextPage = $this->zendesk->getCategories($locale, [
+            "page" => $pageTo+1,
+            "per_page" => 1,
+        ]);
+
+        return $pageTo++;
     }
 
     /**
@@ -248,8 +260,9 @@ class ZendeskSource extends AbstractSource
 
     /**
      * Process: GET zendesk articles, POST/PATCH vanilla knowledge base articles
+     * @return int
      */
-    private function processKnowledgeArticles()
+    public function processKnowledgeArticles(): int
     {
         [$pageLimit, $pageFrom, $pageTo] = $this->setPageLimits();
         $locale = $this->config["sourceLocale"] ?? self::DEFAULT_SOURCE_LOCALE;
@@ -276,7 +289,7 @@ class ZendeskSource extends AbstractSource
 
             $articles = $this->zendesk->getArticles($locale, $queryParams);
             if (empty($articles)) {
-                break;
+                return self::PROCESS_COMPLETED;
             }
             $knowledgeArticles = $this->transform($articles, [
                 "foreignID" => [
@@ -387,7 +400,7 @@ class ZendeskSource extends AbstractSource
                 }
             }
         }
-        return [];
+        return $pageFrom++;
     }
 
     /**
@@ -993,7 +1006,7 @@ HTML;
     /**
      * Sync archived ZenDesk content with Vanilla.
      */
-    private function syncUpArchivedZenDeskArticles()
+    public function syncUpArchivedZenDeskArticles()
     {
         $this->logger->info(
             "Delete mode enabled, all other import modes will not run during this process"
