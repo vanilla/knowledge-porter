@@ -234,8 +234,8 @@ class ZendeskSource extends AbstractSource
                 $knowledgeCategories,
                 $translate
             );
-            foreach ($knowledgeCategories as $knowledgeCategory) {
-                $results[] = $knowledgeCategory["foreignID"];
+            foreach ($categories as $category) {
+                $results[] = $this->addPrefix($category["id"]);
             }
         }
         if ($this->config["import"]["retrySections"] ?? true) {
@@ -328,7 +328,6 @@ class ZendeskSource extends AbstractSource
             $kbArticles = $dest->importKnowledgeArticles($knowledgeArticles);
             $translate = $this->config["import"]["translations"] ?? false;
             foreach ($kbArticles as $kbArticle) {
-                $results[] = $kbArticle["foreignID"];
                 if ($translate) {
                     if (!$kbArticle) {
                         $this->logger->error(
@@ -400,6 +399,10 @@ class ZendeskSource extends AbstractSource
                     ]);
                     $dest->importArticleVotes($kbVotes);
                 }
+            }
+
+            foreach ($articles as $article) {
+                $results[] = $this->addPrefix($article["id"]);
             }
         }
         return $results;
@@ -627,8 +630,10 @@ class ZendeskSource extends AbstractSource
      * @param array $row
      * @return string
      */
-    protected function prepareBody(array $row, ?string $body = null): string
-    {
+    protected function prepareBody(
+        ?string $body = null,
+        array $row = []
+    ): string {
         $returnBody = "";
         if (is_string($body)) {
             $returnBody = $this->parseUrls($body);
