@@ -56,16 +56,12 @@ class VanillaClient extends HttpClient
     /**
      * Execute GET /api/v2/knowledge-bases request against vanilla api.
      *
-     * @param string $locale
      * @param array $query
      * @return array
      */
-    public function getKnowledgeBases(string $locale, array $query = []): array
+    public function getKnowledgeBases(array $query = []): array
     {
-        $result = $this->get(
-            "/api/v2/knowledge-bases?locale={$locale}",
-            $query
-        );
+        $result = $this->get("/api/v2/knowledge-bases", $query);
         $body = $result->getBody();
         return $body;
     }
@@ -73,18 +69,12 @@ class VanillaClient extends HttpClient
     /**
      * Execute GET /api/v2/knowledge-categories request against vanilla api.
      *
-     * @param string $locale
      * @param array $query
      * @return array
      */
-    public function getKnowledgeCategories(
-        string $locale,
-        array $query = []
-    ): array {
-        $result = $this->get(
-            "/api/v2/knowledge-categories?locale={$locale}",
-            $query
-        );
+    public function getKnowledgeCategories(array $query = []): array
+    {
+        $result = $this->get("/api/v2/knowledge-categories", $query);
         $body = $result->getBody();
         return $body;
     }
@@ -92,13 +82,12 @@ class VanillaClient extends HttpClient
     /**
      * Execute GET /api/v2/articles request against vanilla api.
      *
-     * @param string $locale
      * @param array $query
      * @return array
      */
-    public function getArticles(string $locale, array $query = []): array
+    public function getArticles(array $query = []): array
     {
-        $result = $this->get("/api/v2/articles?locale={$locale}", $query);
+        $result = $this->get("/api/v2/articles", $query);
         $body = $result->getBody();
         return $body;
     }

@@ -13,7 +13,8 @@ use Vanilla\KnowledgePorter\HttpClients\VanillaClient;
  * Class VanillaSource
  * @package Vanilla\KnowledgePorter\Sources
  */
-class VanillaSource extends AbstractSource {
+class VanillaSource extends AbstractSource
+{
     /**
      * @var VanillaClient
      */
@@ -23,7 +24,8 @@ class VanillaSource extends AbstractSource {
      * VanillaSource constructor.
      * @param VanillaClient $vanilla
      */
-    public function __construct(VanillaClient $vanilla) {
+    public function __construct(VanillaClient $vanilla)
+    {
         $this->vanillaApi = $vanilla;
     }
 
@@ -32,14 +34,16 @@ class VanillaSource extends AbstractSource {
      *
      * @param string $basePath
      */
-    public function setBasePath(string $basePath) {
+    public function setBasePath(string $basePath)
+    {
         $this->basePath = $basePath;
     }
 
     /**
      * Execute import content actions
      */
-    public function import(): void {
+    public function import(): void
+    {
         $this->processKnowledgeBases();
         $this->processKnowledgeCategories();
         $this->processArticles();
@@ -48,19 +52,31 @@ class VanillaSource extends AbstractSource {
     /**
      * Process: GET knowledge bases, POST/PATCH vanilla knowledge bases
      */
-    private function processKnowledgeBases() {
+    private function processKnowledgeBases()
+    {
         $dest = $this->getDestination();
-        $knowledgeBases = $this->vanillaApi->getKnowledgeBases('en');
+        $knowledgeBases = $this->vanillaApi->getKnowledgeBases([
+            "locale" => "en",
+        ]);
         $kbs = $this->transform($knowledgeBases, [
-            'foreignID' => ["column" =>'knowledgeBaseID', "filter" => [$this, "addPrefix"]],
-            'name' => 'name',
-            'description' => 'description',
-            'icon' => 'icon',
-            'urlCode' => ["column" => 'urlCode', "filter" => [$this, "addPrefix"]],
-            'sourceLocale' => 'sourceLocale',
-            'viewType' => 'viewType',
-            'sortArticles' => 'sortArticles',
-            'skip' => ["column" =>'foreignID', "filter" => [$this, "isOrigin"]],
+            "foreignID" => [
+                "column" => "knowledgeBaseID",
+                "filter" => [$this, "addPrefix"],
+            ],
+            "name" => "name",
+            "description" => "description",
+            "icon" => "icon",
+            "urlCode" => [
+                "column" => "urlCode",
+                "filter" => [$this, "addPrefix"],
+            ],
+            "sourceLocale" => "sourceLocale",
+            "viewType" => "viewType",
+            "sortArticles" => "sortArticles",
+            "skip" => [
+                "column" => "foreignID",
+                "filter" => [$this, "isOrigin"],
+            ],
         ]);
 
         $dest->importKnowledgeBases($kbs);
@@ -70,24 +86,46 @@ class VanillaSource extends AbstractSource {
      * Vanilla does not have any need for rehosting headers.
      * @return array
      */
-    public function getFileRehostingHeaders(): array {
+    public function getFileRehostingHeaders(): array
+    {
         return [];
     }
 
     /**
      * Process: GET vanilla kb categories, POST/PATCH vanilla knowledge categories
      */
-    private function processKnowledgeCategories() {
-        $categories = $this->vanillaApi->getKnowledgeCategories('en', ['knowledgeBaseID']);
+    private function processKnowledgeCategories()
+    {
+        $query = [
+            "locale" => "en",
+        ];
+        $categories = $this->vanillaApi->getKnowledgeCategories($query);
         $knowledgeCategories = $this->transform($categories, [
-            'foreignID' => ["column" =>'knowledgeCategoryID', "filter" => [$this, "addPrefix"]],
-            'knowledgeBaseID' => ["column" =>'knowledgeBaseID', "filter" => [$this, "knowledgeBaseSmartId"]],
-            'parentID' => ["column" =>'parentID', "filter" => [$this, "calculateParentID"]],
-            'name' => 'name',
-            'rootCategory' => ["column" =>'parentID', "filter" => [$this, "isRoot"]],
-            'sourceParentID' => ["column" =>'parentID', "filter" => [$this, "isRoot"]],
-            'skip' => ["column" =>'knowledgeBaseID', "filter" => [$this, "isOriginKb"]],
-
+            "foreignID" => [
+                "column" => "knowledgeCategoryID",
+                "filter" => [$this, "addPrefix"],
+            ],
+            "knowledgeBaseID" => [
+                "column" => "knowledgeBaseID",
+                "filter" => [$this, "knowledgeBaseSmartId"],
+            ],
+            "parentID" => [
+                "column" => "parentID",
+                "filter" => [$this, "calculateParentID"],
+            ],
+            "name" => "name",
+            "rootCategory" => [
+                "column" => "parentID",
+                "filter" => [$this, "isRoot"],
+            ],
+            "sourceParentID" => [
+                "column" => "parentID",
+                "filter" => [$this, "isRoot"],
+            ],
+            "skip" => [
+                "column" => "knowledgeBaseID",
+                "filter" => [$this, "isOriginKb"],
+            ],
         ]);
         $dest = $this->getDestination();
         $dest->importKnowledgeCategories($knowledgeCategories);
@@ -96,7 +134,8 @@ class VanillaSource extends AbstractSource {
     /**
      * Process: GET vanilla kb articles, POST/PATCH vanilla knowledge base articles
      */
-    private function processArticles() {
+    private function processArticles()
+    {
         return [];
     }
 
@@ -106,8 +145,9 @@ class VanillaSource extends AbstractSource {
      * @param mixed $str
      * @return string
      */
-    protected function addPrefix($str): string {
-        $newStr = $this->config["foreignIDPrefix"].$str;
+    protected function addPrefix($str): string
+    {
+        $newStr = $this->config["foreignIDPrefix"] . $str;
         return $newStr;
     }
 
@@ -117,8 +157,9 @@ class VanillaSource extends AbstractSource {
      * @param mixed $str
      * @return string
      */
-    protected function knowledgeCategorySmartId($str): string {
-        $newStr = '$foreignID:'.$this->config["foreignIDPrefix"].$str;
+    protected function knowledgeCategorySmartId($str): string
+    {
+        $newStr = '$foreignID:' . $this->config["foreignIDPrefix"] . $str;
         return $newStr;
     }
 
@@ -128,7 +169,8 @@ class VanillaSource extends AbstractSource {
      * @param mixed $str
      * @return string
      */
-    protected function calculateParentID($str): string {
+    protected function calculateParentID($str): string
+    {
         if ($str != "-1") {
             $newStr = '$foreignID:' . $this->config["foreignIDPrefix"] . $str;
         } else {
@@ -143,11 +185,12 @@ class VanillaSource extends AbstractSource {
      * @param mixed $str
      * @return string
      */
-    protected function isRoot($str): string {
+    protected function isRoot($str): string
+    {
         if ($str == "-1") {
-            $newStr = 'true';
+            $newStr = "true";
         } else {
-            $newStr = 'false';
+            $newStr = "false";
         }
 
         return $newStr;
@@ -160,8 +203,9 @@ class VanillaSource extends AbstractSource {
      * @param mixed $str Check foreignID field
      * @return string
      */
-    protected function isOrigin($str): string {
-        $newStr = !empty($str) ? 'true' : 'false';
+    protected function isOrigin($str): string
+    {
+        $newStr = !empty($str) ? "true" : "false";
         return $newStr;
     }
 
@@ -172,12 +216,13 @@ class VanillaSource extends AbstractSource {
      * @param mixed $str
      * @return string
      */
-    protected function isOriginKb($str): string {
-        $max = $this->config['maxKbID'] ?? false;
+    protected function isOriginKb($str): string
+    {
+        $max = $this->config["maxKbID"] ?? false;
         if ($max) {
-            $newStr = ($str > $max) ? "true" : 'false';
+            $newStr = $str > $max ? "true" : "false";
         } else {
-            $newStr = 'false';
+            $newStr = "false";
         }
 
         return $newStr;
@@ -189,8 +234,9 @@ class VanillaSource extends AbstractSource {
      * @param mixed $str
      * @return string
      */
-    protected function knowledgeBaseSmartId($str): string {
-        $newStr = '$foreignID:'.$this->config["foreignIDPrefix"].$str;
+    protected function knowledgeBaseSmartId($str): string
+    {
+        $newStr = '$foreignID:' . $this->config["foreignIDPrefix"] . $str;
         return $newStr;
     }
 
@@ -199,9 +245,10 @@ class VanillaSource extends AbstractSource {
      *
      * @param array $config
      */
-    public function setConfig(array $config): void {
+    public function setConfig(array $config): void
+    {
         $this->config = $config;
-        $this->vanillaApi->setToken($this->config['token']);
-        $this->vanillaApi->setBaseUrl($this->config['baseUrl']);
+        $this->vanillaApi->setToken($this->config["token"]);
+        $this->vanillaApi->setBaseUrl($this->config["baseUrl"]);
     }
 }
