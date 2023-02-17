@@ -9,20 +9,24 @@ namespace Vanilla\KnowledgePorter\Sources;
 
 use Exception;
 
+/**
+ * Mock the return values of the process functions from a ZendeskSource.
+ */
 class ZendeskMockSource extends ZendeskSource
 {
-    const VALID_RESPONSE = 1;
-    const INVALID_RESPONSE = -1;
-    const EMPTY_RESPONSE = 0;
+    const VALID_PAGE = 1;
+    const EMPTY_PAGE = 2;
+    const INVALID_PAGE = 3;
 
     /**
      * Mock a call made to ZendeskSource::processKnowledgeBases().
      *
      * @return array
+     * @throws Exception
      */
     public function processKnowledgeBases(): array
     {
-        $mock = $this->config["mock"];
+        $mock = $this->config["pageFrom"];
         $result = $this->returnMockRecords($mock);
         return $result;
     }
@@ -31,10 +35,11 @@ class ZendeskMockSource extends ZendeskSource
      * Mock a call made to ZendeskSource::processKnowledgeCategories().
      *
      * @return array
+     * @throws Exception
      */
     public function processKnowledgeCategories(): array
     {
-        $mock = $this->config["mock"];
+        $mock = $this->config["pageFrom"];
         $result = $this->returnMockRecords($mock);
         return $result;
     }
@@ -43,10 +48,11 @@ class ZendeskMockSource extends ZendeskSource
      * Mock a call made to ZendeskSource::processKnowledgeArticles.
      *
      * @return array
+     * @throws Exception
      */
     public function processKnowledgeArticles(): array
     {
-        $mock = $this->config["mock"];
+        $mock = $this->config["pageFrom"];
         $result = $this->returnMockRecords($mock);
         return $result;
     }
@@ -59,12 +65,12 @@ class ZendeskMockSource extends ZendeskSource
     protected function returnMockRecords(int $mockValue): array
     {
         switch ($mockValue) {
-            case self::VALID_RESPONSE:
+            case self::VALID_PAGE:
                 return ["zd1", "zd2", "zd3"];
                 break;
-            case self::EMPTY_RESPONSE:
+            case self::EMPTY_PAGE:
                 return [];
-            case self::INVALID_RESPONSE:
+            case self::INVALID_PAGE:
             default:
                 throw new Exception("An error has occurred");
         }
