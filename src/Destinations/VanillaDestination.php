@@ -11,6 +11,7 @@ use Garden\Http\HttpResponse;
 use Garden\Http\HttpResponseException;
 use Garden\Schema\Schema;
 use Garden\Schema\ValidationException;
+use Illuminate\Support\Facades\Log;
 use Psr\Container\ContainerInterface;
 use Psr\Log\LogLevel;
 use Vanilla\KnowledgePorter\HttpClients\HttpCacheMiddleware;
@@ -60,6 +61,8 @@ class VanillaDestination extends AbstractDestination
         ["knowledgeBaseID", "resolveKnowledgeBaseID"],
         ["parentID", "resolveKnowledgeCategoryID"],
     ];
+
+    const DELETED_STATUS = "deleted";
 
     /** @var array */
     private static $kbcats = [];
@@ -1218,5 +1221,95 @@ class VanillaDestination extends AbstractDestination
         }
 
         return $res;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function syncKnowledgeBase(
+        array $foreignKnowledgeBaseIDs,
+        array $query = []
+    ): array {
+        $result = [];
+        $knowledgeBases = $this->vanillaApi->getKnowledgeBases($query);
+        foreach ($knowledgeBases as $knowledgeBase) {
+            if (
+                in_array($knowledgeBase["foreignID"], $foreignKnowledgeBaseIDs)
+            ) {
+                $result[] = $knowledgeBase["knowledgeBaseID"];
+            }
+        }
+        return $result;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function syncKnowledgeCategories(
+        array $foreignKnowledgeCategoryIDs,
+        array $query = []
+    ): array {
+        $result = [];
+
+        $knowledgeCategories = $this->vanillaApi->getKnowledgeCategories(
+            $query
+        );
+
+        foreach ($knowledgeCategories as $knowledgeCategory) {
+            if (
+                !in_array(
+                    $knowledgeCategory["foreignID"],
+                    $foreignKnowledgeCategoryIDs
+                )
+            ) {
+                $this->logger->info(
+                    "Deleting knowledge category {$knowledgeCategory["knowledgeCategoryID"]} because it no longer exists on the source."
+                );
+                $response = $this->vanillaApi->delete(
+                    "/api/v2/knowledge-categories/{$knowledgeCategory["knowledgeCategoryID"]}"
+                );
+
+                if (!$response->isSuccessful()) {
+                    $this->logger->error(
+                        "Failed deleting knowledge category with ID {$knowledgeCategory["knowledgeCategoryID"]}."
+                    );
+                } else {
+                    $result[] = $knowledgeCategory["knowledgeCategoryID"];
+                }
+            }
+        }
+        return $result;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function syncArticles(
+        array $foreignArticleIDs,
+        array $query = []
+    ): array {
+        $result = [];
+        $articles = $this->vanillaApi->getArticles($query);
+        foreach ($articles as $article) {
+            if (!in_array($article["foreignID"], $foreignArticleIDs)) {
+                $this->logger->debug(
+                    "Deleting article {$article["articleID"]} because it no longer exists on the source."
+                );
+                $response = $this->vanillaApi->patch(
+                    "/api/v2/articles/{$article["articleID"]}",
+                    ["status" => self::DELETED_STATUS]
+                );
+
+                if (!$response->isSuccessful()) {
+                    $this->logger->error(
+                        "Failed deleting article with ID {$article["articleID"]}."
+                    );
+                } else {
+                    $result[] = $article["articleID"];
+                }
+            }
+        }
+
+        return $result;
     }
 }

@@ -57,12 +57,38 @@ class VanillaMockDestination extends AbstractDestination
         return [];
     }
 
-    public function syncArticles(
-        array $zendeskArticles,
-        int $limit,
-        int $page,
-        array $knowledgeBaseIDs = []
+    /**
+     * @inheritDoc
+     */
+    public function syncKnowledgeBase(
+        array $foreignKnowledgeBaseIDs,
+        array $query = []
     ): array {
+        $page = $query["page"];
+        $result = $this->returnMockRecords($page);
+        return $result;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function syncKnowledgeCategories(
+        array $foreignKnowledgeCategoryIDs,
+        array $query = []
+    ): array {
+        $page = $query["page"];
+        $result = $this->returnMockRecords($page);
+        return $result;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function syncArticles(
+        array $foreignArticleIDs,
+        array $query = []
+    ): array {
+        $page = $query["page"];
         $result = $this->returnMockRecords($page);
         return $result;
     }
@@ -74,15 +100,10 @@ class VanillaMockDestination extends AbstractDestination
      */
     protected function returnMockRecords(int $mockValue): array
     {
-        switch ($mockValue) {
-            case self::VALID_PAGE:
-                return ["zd1", "zd2", "zd3"];
-                break;
-            case self::EMPTY_PAGE:
-                return [];
-            case self::INVALID_PAGE:
-            default:
-                throw new Exception("An error has occurred");
-        }
+        return match ($mockValue) {
+            self::VALID_PAGE => ["zd1", "zd2", "zd3"],
+            self::EMPTY_PAGE => [],
+            default => throw new Exception("An error has occurred"),
+        };
     }
 }
