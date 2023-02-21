@@ -1247,7 +1247,7 @@ class VanillaDestination extends AbstractDestination
         $processedCount = count($knowledgeBases);
         $matchedCount = count($matched);
         $skippedCount = count($skipped);
-        $this->logger->info("Synced $processedCount articles (matched: $matchedCount, skipped: $skippedCount)");
+        $this->logger->info("Synced $processedCount articles (matched: $matchedCount, skipped: $skippedCount).");
         return ["fetched" => $processedCount , "vanillaIDs" => $matched];
     }
 
@@ -1290,7 +1290,7 @@ class VanillaDestination extends AbstractDestination
         $deletedCount = count($deleted);
         $skippedCount = count($skipped);
         $failedCount = count($failed);
-        $this->logger->info("Synced $processedCount articles (matched: $matchedCount, deleted: $deletedCount, skipped: $skippedCount, failed: $failedCount)");
+        $this->logger->info("Synced $processedCount articles (matched: $matchedCount, deleted: $deletedCount, skipped: $skippedCount, failed: $failedCount).");
         return ["fetched" => $processedCount , "vanillaIDs" => $matched];
     }
 
@@ -1333,7 +1333,7 @@ class VanillaDestination extends AbstractDestination
         $matchedCount = count($matched);
         $deletedCount = count($deleted);
         $failedCount = count($failed);
-        $this->logger->info("Synced $processedCount articles (matched: $matchedCount, deleted: $deletedCount, failed: $failedCount)");
+        $this->logger->info("Synced $processedCount articles (matched: $matchedCount, deleted: $deletedCount, failed: $failedCount).");
         return ["fetched" => $processedCount , "vanillaIDs" => $matched];
     }
 }
