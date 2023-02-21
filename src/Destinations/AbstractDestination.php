@@ -21,6 +21,8 @@ abstract class AbstractDestination implements TaskLoggerAwareInterface
 {
     use ConfigurableTrait, TaskLoggerAwareTrait;
 
+    const NO_DATA = -1;
+
     /** @var string[] */
     protected $rehostHeaders = [];
 
@@ -89,34 +91,34 @@ abstract class AbstractDestination implements TaskLoggerAwareInterface
      *
      * @param array $foreignKnowledgeBaseIDs
      * @param array $query
-     * @return mixed
+     * @return array|int
      */
     abstract public function syncKnowledgeBase(
         array $foreignKnowledgeBaseIDs,
         array $query = []
-    ): array;
+    );
 
     /**
      * Synchronize foreign Knowledge Categories with the one from the destination.
      *
      * @param array $foreignKnowledgeCategoryIDs
      * @param array $query
-     * @return array
+     * @return array|int
      */
     abstract public function syncKnowledgeCategories(
         array $foreignKnowledgeCategoryIDs,
         array $query = []
-    ): array;
+    );
 
     /**
      * Synchronize foreign articles with the one from the destination.
      *
      * @param array $foreignArticleIDs
      * @param array $query
-     * @return array
+     * @return array|int
      */
     abstract public function syncArticles(
         array $foreignArticleIDs,
         array $query = []
-    ): array;
+    );
 }

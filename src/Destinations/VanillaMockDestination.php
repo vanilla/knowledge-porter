@@ -63,7 +63,7 @@ class VanillaMockDestination extends AbstractDestination
     public function syncKnowledgeBase(
         array $foreignKnowledgeBaseIDs,
         array $query = []
-    ): array {
+    ) {
         $page = $query["page"];
         $result = $this->returnMockRecords($page);
         return $result;
@@ -75,7 +75,7 @@ class VanillaMockDestination extends AbstractDestination
     public function syncKnowledgeCategories(
         array $foreignKnowledgeCategoryIDs,
         array $query = []
-    ): array {
+    ) {
         $page = $query["page"];
         $result = $this->returnMockRecords($page);
         return $result;
@@ -87,7 +87,7 @@ class VanillaMockDestination extends AbstractDestination
     public function syncArticles(
         array $foreignArticleIDs,
         array $query = []
-    ): array {
+    ) {
         $page = $query["page"];
         $result = $this->returnMockRecords($page);
         return $result;
@@ -102,7 +102,7 @@ class VanillaMockDestination extends AbstractDestination
     {
         return match ($mockValue) {
             self::VALID_PAGE => ["zd1", "zd2", "zd3"],
-            self::EMPTY_PAGE => [],
+            self::EMPTY_PAGE => self::NO_DATA,
             default => throw new Exception("An error has occurred"),
         };
     }
