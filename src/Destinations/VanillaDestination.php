@@ -1246,14 +1246,11 @@ class VanillaDestination extends AbstractDestination
                 $skipped[] = $knowledgeBase["knowledgeBaseID"];
             }
         }
-        $this->logger->end(
-            "Synced {processed} knowledge bases (matched: {matched}, skipped: {skipped}).",
-            [
-                "processed" => count($knowledgeBases),
-                "matched" => count($matched),
-                "skipped" => count($skipped)
-            ]
-        );
+
+        $processedCount = count($knowledgeBases);
+        $matchedCount = count($matched);
+        $skippedCount = count($skipped);
+        $this->logger->info("Synced $processedCount articles (matched: $matchedCount, skipped: $skippedCount)");
         return $matched;
     }
 
@@ -1264,8 +1261,7 @@ class VanillaDestination extends AbstractDestination
         array $foreignKnowledgeCategoryIDs,
         array $query = []
     ) {
-        $processed = $matched = $deleted = $skipped = $failed = [];
-
+        $matched = $deleted = $skipped = $failed = [];
         $knowledgeCategories = $this->vanillaApi->getKnowledgeCategories(
             $query
         );
@@ -1275,7 +1271,6 @@ class VanillaDestination extends AbstractDestination
         }
 
         foreach ($knowledgeCategories as $knowledgeCategory) {
-            $processed[] = $knowledgeCategory["knowledgeCategoryID"];
             if ($knowledgeCategory["parentID"] < 1) {
                 $skipped[] = $knowledgeCategory["foreignID"];
             } elseif (in_array($knowledgeCategory["foreignID"], $foreignKnowledgeCategoryIDs)) {
@@ -1296,17 +1291,13 @@ class VanillaDestination extends AbstractDestination
             }
         }
 
-        $this->logger->end(
-            "Synced {processed} articles (matched: {matched}, deleted: {deleted}, skipped: {skipped}, failed: {failed})",
-            [
-                "processed" => count($processed),
-                "matched" => count($matched),
-                "deleted" => count($deleted),
-                "skipped" => count($skipped),
-                "failed" => count($failed),
-            ]
-        );
-        return $knowledgeCategories;
+        $processedCount = count($knowledgeCategories);
+        $matchedCount = count($matched);
+        $deletedCount = count($deleted);
+        $skippedCount = count($skipped);
+        $failedCount = count($failed);
+        $this->logger->info("Synced $processedCount articles (matched: $matchedCount, deleted: $deletedCount, skipped: $skippedCount, failed: $failedCount)");
+        return $matched;
     }
 
     /**
@@ -1316,7 +1307,7 @@ class VanillaDestination extends AbstractDestination
         array $foreignArticleIDs,
         array $query = []
     ) {
-        $processed = $matched = $deleted = $failed = [];
+        $matched = $deleted = $failed = [];
         $articles = $this->vanillaApi->getArticles($query);
 
         if(empty($articles)) {
@@ -1324,7 +1315,6 @@ class VanillaDestination extends AbstractDestination
         }
 
         foreach ($articles as $article) {
-            $processed[] = $article["articleID"];
             if (in_array($article["foreignID"], $foreignArticleIDs)) {
                 $matched[] = $article["foreignID"];
             } else {
@@ -1348,15 +1338,11 @@ class VanillaDestination extends AbstractDestination
             }
         }
 
-        $this->logger->end(
-            "Synced {processed} articles (matched: {matched}, deleted: {deleted}, failed: {failed})",
-            [
-                "processed" => count($processed),
-                "matched" => count($matched),
-                "deleted" => count($deleted),
-                "failed" => count($failed),
-            ]
-        );
-        return $processed;
+        $processedCount = count($articles);
+        $matchedCount = count($matched);
+        $deletedCount = count($deleted);
+        $failedCount = count($failed);
+        $this->logger->info("Synced $processedCount articles (matched: $matchedCount, deleted: $deletedCount, failed: $failedCount)");
+        return $matched;
     }
 }
