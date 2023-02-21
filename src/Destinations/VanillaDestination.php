@@ -1229,13 +1229,10 @@ class VanillaDestination extends AbstractDestination
     public function syncKnowledgeBase(
         array $foreignKnowledgeBaseIDs,
         array $query = []
-    ) {
+    ): array
+    {
         $matched = $skipped = [];
         $knowledgeBases = $this->vanillaApi->getKnowledgeBases($query);
-
-        if(empty($knowledgeBases)) {
-            return self::NO_DATA;
-        }
 
         foreach ($knowledgeBases as $knowledgeBase) {
             if (
@@ -1251,7 +1248,7 @@ class VanillaDestination extends AbstractDestination
         $matchedCount = count($matched);
         $skippedCount = count($skipped);
         $this->logger->info("Synced $processedCount articles (matched: $matchedCount, skipped: $skippedCount)");
-        return $matched;
+        return ["fetched" => $processedCount , "vanillaIDs" => $matched];
     }
 
     /**
@@ -1260,15 +1257,12 @@ class VanillaDestination extends AbstractDestination
     public function syncKnowledgeCategories(
         array $foreignKnowledgeCategoryIDs,
         array $query = []
-    ) {
+    ): array
+    {
         $matched = $deleted = $skipped = $failed = [];
         $knowledgeCategories = $this->vanillaApi->getKnowledgeCategories(
             $query
         );
-
-        if(empty($knowledgeCategories)) {
-            return self::NO_DATA;
-        }
 
         foreach ($knowledgeCategories as $knowledgeCategory) {
             if ($knowledgeCategory["parentID"] < 1) {
@@ -1297,7 +1291,7 @@ class VanillaDestination extends AbstractDestination
         $skippedCount = count($skipped);
         $failedCount = count($failed);
         $this->logger->info("Synced $processedCount articles (matched: $matchedCount, deleted: $deletedCount, skipped: $skippedCount, failed: $failedCount)");
-        return $matched;
+        return ["fetched" => $processedCount , "vanillaIDs" => $matched];
     }
 
     /**
@@ -1306,17 +1300,14 @@ class VanillaDestination extends AbstractDestination
     public function syncArticles(
         array $foreignArticleIDs,
         array $query = []
-    ) {
+    ): array
+    {
         $matched = $deleted = $failed = [];
         $articles = $this->vanillaApi->getArticles($query);
 
-        if(empty($articles)) {
-            return self::NO_DATA;
-        }
-
         foreach ($articles as $article) {
             if (in_array($article["foreignID"], $foreignArticleIDs)) {
-                $matched[] = $article["foreignID"];
+                $matched[] = $article["articleID"];
             } else {
                 $this->logger->debug(
                     "Deleting article {$article["articleID"]} because it no longer exists on the source."
@@ -1343,6 +1334,6 @@ class VanillaDestination extends AbstractDestination
         $deletedCount = count($deleted);
         $failedCount = count($failed);
         $this->logger->info("Synced $processedCount articles (matched: $matchedCount, deleted: $deletedCount, failed: $failedCount)");
-        return $matched;
+        return ["fetched" => $processedCount , "vanillaIDs" => $matched];
     }
 }

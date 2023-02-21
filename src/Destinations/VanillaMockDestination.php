@@ -101,8 +101,8 @@ class VanillaMockDestination extends AbstractDestination
     protected function returnMockRecords(int $mockValue): array
     {
         return match ($mockValue) {
-            self::VALID_PAGE => ["zd1", "zd2", "zd3"],
-            self::EMPTY_PAGE => self::NO_DATA,
+            self::VALID_PAGE => ["fetched" => 3, "vanillaIDs" => ["zd1", "zd2", "zd3"]],
+            self::EMPTY_PAGE => ["fetched" => 0, "vanillaIDs" => []],
             default => throw new Exception("An error has occurred"),
         };
     }
