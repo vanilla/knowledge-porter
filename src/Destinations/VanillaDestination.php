@@ -1236,6 +1236,9 @@ class VanillaDestination extends AbstractDestination
             if (
                 in_array($knowledgeBase["foreignID"], $foreignKnowledgeBaseIDs)
             ) {
+                $this->logger->info(
+                    "Syncing knowledge base {$knowledgeBase["knowledgeBaseID"]} matches the foreign}."
+                );
                 $result[] = $knowledgeBase["knowledgeBaseID"];
             }
         }
@@ -1256,7 +1259,12 @@ class VanillaDestination extends AbstractDestination
         );
 
         foreach ($knowledgeCategories as $knowledgeCategory) {
+            $this->logger->info(
+                "Syncing knowledge category {$knowledgeCategory["knowledgeCategoryID"]}."
+            );
+
             if (
+                $knowledgeCategory["parentID"] > 0 &&
                 !in_array(
                     $knowledgeCategory["foreignID"],
                     $foreignKnowledgeCategoryIDs
@@ -1265,19 +1273,17 @@ class VanillaDestination extends AbstractDestination
                 $this->logger->info(
                     "Deleting knowledge category {$knowledgeCategory["knowledgeCategoryID"]} because it no longer exists on the source."
                 );
-                $response = $this->vanillaApi->delete(
-                    "/api/v2/knowledge-categories/{$knowledgeCategory["knowledgeCategoryID"]}"
-                );
-
-                if (!$response->isSuccessful()) {
-                    $this->logger->error(
-                        "Failed deleting knowledge category with ID {$knowledgeCategory["knowledgeCategoryID"]}."
+                try {
+                    $response = $this->vanillaApi->delete(
+                        "/api/v2/knowledge-categories/{$knowledgeCategory["knowledgeCategoryID"]}"
                     );
-                } else {
                     $result[] = $knowledgeCategory["knowledgeCategoryID"];
+                } catch (HttpResponseException $e) {
+                    $this->logger->error($e->getMessage());
                 }
             }
         }
+        
         return $result;
     }
 
