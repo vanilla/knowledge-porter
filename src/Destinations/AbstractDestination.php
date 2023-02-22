@@ -17,8 +17,7 @@ use Vanilla\KnowledgePorter\TaskLoggerAwareTrait;
  * Class AbstractDestination
  * @package Vanilla\KnowledgePorter\Destinations
  */
-abstract class AbstractDestination implements TaskLoggerAwareInterface
-{
+abstract class AbstractDestination implements TaskLoggerAwareInterface {
     use ConfigurableTrait, TaskLoggerAwareTrait;
 
     /** @var string[] */
@@ -27,8 +26,7 @@ abstract class AbstractDestination implements TaskLoggerAwareInterface
     /**
      * @param string[] $rehostHeaders
      */
-    public function setRehostHeaders(array $rehostHeaders): void
-    {
+    public function setRehostHeaders(array $rehostHeaders): void {
         $this->rehostHeaders = $rehostHeaders;
     }
 
@@ -51,9 +49,7 @@ abstract class AbstractDestination implements TaskLoggerAwareInterface
      *
      * @param iterable $rows
      */
-    abstract public function importKnowledgeCategories(
-        iterable $rows
-    ): iterable;
+    abstract public function importKnowledgeCategories(iterable $rows): iterable;
 
     /**
      * Import knowledge articles from source to destination.
@@ -67,9 +63,7 @@ abstract class AbstractDestination implements TaskLoggerAwareInterface
      * @param string $foreignID
      * @return array
      */
-    abstract public function getKnowledgeBaseBySmartID(
-        string $foreignID
-    ): array;
+    abstract public function getKnowledgeBaseBySmartID(string $foreignID): array;
 
     /**
      * Delete archived articles.
@@ -78,11 +72,7 @@ abstract class AbstractDestination implements TaskLoggerAwareInterface
      * @param array $articles
      * @param string $prefix
      */
-    abstract public function deleteArchivedArticles(
-        array $knowledgeBases,
-        array $articles,
-        string $prefix
-    );
+    abstract public function deleteArchivedArticles(array $knowledgeBases, array $articles, string $prefix);
 
     /**
      * Synchronize foreign Knowledge Bases with the one from the destination.

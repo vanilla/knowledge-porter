@@ -630,10 +630,8 @@ class ZendeskSource extends AbstractSource
      * @param array $row
      * @return string
      */
-    protected function prepareBody(
-        ?string $body = null,
-        array $row = []
-    ): string {
+    protected function prepareBody(array $row, ?string $body = null): string
+    {
         $returnBody = "";
         if (is_string($body)) {
             $returnBody = $this->parseUrls($body);
@@ -1013,7 +1011,7 @@ HTML;
     /**
      * Sync archived ZenDesk content with Vanilla.
      */
-    public function syncUpArchivedZenDeskArticles()
+    private function syncUpArchivedZenDeskArticles()
     {
         $this->logger->info(
             "Delete mode enabled, all other import modes will not run during this process"

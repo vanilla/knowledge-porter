@@ -11,7 +11,6 @@ use Garden\Http\HttpResponse;
 use Garden\Http\HttpResponseException;
 use Garden\Schema\Schema;
 use Garden\Schema\ValidationException;
-use Illuminate\Support\Facades\Log;
 use Psr\Container\ContainerInterface;
 use Psr\Log\LogLevel;
 use Vanilla\KnowledgePorter\HttpClients\HttpCacheMiddleware;
