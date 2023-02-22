@@ -630,8 +630,10 @@ class ZendeskSource extends AbstractSource
      * @param array $row
      * @return string
      */
-    protected function prepareBody(array $row, ?string $body = null): string
-    {
+    protected function prepareBody(
+        ?string $body = null,
+        array $row = []
+    ): string {
         $returnBody = "";
         if (is_string($body)) {
             $returnBody = $this->parseUrls($body);
