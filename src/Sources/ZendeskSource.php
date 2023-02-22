@@ -1011,7 +1011,7 @@ HTML;
     /**
      * Sync archived ZenDesk content with Vanilla.
      */
-    private function syncUpArchivedZenDeskArticles()
+    public function syncUpArchivedZenDeskArticles()
     {
         $this->logger->info(
             "Delete mode enabled, all other import modes will not run during this process"
