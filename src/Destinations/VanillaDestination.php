@@ -1244,9 +1244,11 @@ class VanillaDestination extends AbstractDestination
         }
 
         $processedCount = count($knowledgeBases);
-        $matchedCount = count($matched);
-        $skippedCount = count($skipped);
-        $this->logger->info("Synced $processedCount articles (matched: $matchedCount, skipped: $skippedCount).");
+        if ($processedCount > 0) {
+            $matchedCount = count($matched);
+            $skippedCount = count($skipped);
+            $this->logger->info("Synced $processedCount knowledgeBases (matched: $matchedCount, skipped: $skippedCount).");
+        }
         return ["fetched" => $processedCount , "vanillaIDs" => $matched];
     }
 
@@ -1286,11 +1288,13 @@ class VanillaDestination extends AbstractDestination
         }
 
         $processedCount = count($knowledgeCategories);
-        $matchedCount = count($matched);
-        $deletedCount = count($deleted);
-        $skippedCount = count($skipped);
-        $failedCount = count($failed);
-        $this->logger->info("Synced $processedCount articles (matched: $matchedCount, deleted: $deletedCount, skipped: $skippedCount, failed: $failedCount).");
+        if ($processedCount > 0) {
+            $matchedCount = count($matched);
+            $deletedCount = count($deleted);
+            $skippedCount = count($skipped);
+            $failedCount = count($failed);
+            $this->logger->info("Synced $processedCount knowledgeCategories (matched: $matchedCount, deleted: $deletedCount, skipped: $skippedCount, failed: $failedCount).");
+        }
         return ["fetched" => $processedCount , "vanillaIDs" => $matched];
     }
 
@@ -1330,10 +1334,13 @@ class VanillaDestination extends AbstractDestination
         }
 
         $processedCount = count($articles);
-        $matchedCount = count($matched);
-        $deletedCount = count($deleted);
-        $failedCount = count($failed);
-        $this->logger->info("Synced $processedCount articles (matched: $matchedCount, deleted: $deletedCount, failed: $failedCount).");
+
+        if($processedCount > 0) {
+            $matchedCount = count($matched);
+            $deletedCount = count($deleted);
+            $failedCount = count($failed);
+            $this->logger->info("Synced $processedCount Articles (matched: $matchedCount, deleted: $deletedCount, failed: $failedCount).");
+        }
         return ["fetched" => $processedCount , "vanillaIDs" => $matched];
     }
 }
