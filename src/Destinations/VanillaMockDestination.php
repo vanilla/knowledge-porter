@@ -9,11 +9,22 @@ namespace Vanilla\KnowledgePorter\Destinations;
 
 use Exception;
 
+/**
+ * Mock the return values of a VanillaDestination.
+ */
 class VanillaMockDestination extends AbstractDestination
 {
     const VALID_PAGE = 1;
     const EMPTY_PAGE = 2;
     const INVALID_PAGE = 3;
+
+    /**
+     * Mock a call made to VanillaDestination::importKnowledgeBases.
+     *
+     * @param iterable $rows
+     * @return iterable
+     * @throws Exception
+     */
     public function importKnowledgeBases(iterable $rows): iterable
     {
         $mock = $this->config["pageFrom"];
@@ -21,13 +32,22 @@ class VanillaMockDestination extends AbstractDestination
         return $result;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function importUsers(iterable $rows): iterable
     {
-        $mock = $this->config["pageFrom"];
-        $result = $this->returnMockRecords($mock);
-        return $result;
+        // TODO: Implement importUsers() method if we ever need it.
+        return [];
     }
 
+    /**
+     * Mock a call made to VanillaDestination::importKnowledgeCategories.
+     *
+     * @param iterable $rows
+     * @return iterable
+     * @throws Exception
+     */
     public function importKnowledgeCategories(iterable $rows): iterable
     {
         $mock = $this->config["pageFrom"];
@@ -35,6 +55,13 @@ class VanillaMockDestination extends AbstractDestination
         return $result;
     }
 
+    /**
+     * Mock a call made to VanillaDestination::importKnowledgeArticles.
+     *
+     * @param iterable $rows
+     * @return iterable
+     * @throws Exception
+     */
     public function importKnowledgeArticles(iterable $rows): iterable
     {
         $mock = $this->config["pageFrom"];
@@ -42,18 +69,24 @@ class VanillaMockDestination extends AbstractDestination
         return $result;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function getKnowledgeBaseBySmartID(string $foreignID): array
     {
-        // TODO: Implement getKnowledgeBaseBySmartID() method.
+        // TODO: Implement getKnowledgeBaseBySmartID() method if we ever need it.
         return [];
     }
 
+    /**
+     * @inheritDoc
+     */
     public function deleteArchivedArticles(
         array $knowledgeBases,
         array $articles,
         string $prefix
     ) {
-        // TODO: Implement deleteArchivedArticles() method.
+        // TODO: Implement deleteArchivedArticles() method  if we ever need it.
         return [];
     }
 
@@ -94,16 +127,22 @@ class VanillaMockDestination extends AbstractDestination
     }
 
     /**
+     * Generate fake output for testing purposes.
+     *
      * @param int $mockValue
      * @return array|string[]
      * @throws Exception
      */
     protected function returnMockRecords(int $mockValue): array
     {
-        return match ($mockValue) {
-            self::VALID_PAGE => ["fetched" => 3, "vanillaIDs" => ["zd1", "zd2", "zd3"]],
-            self::EMPTY_PAGE => ["fetched" => 0, "vanillaIDs" => []],
-            default => throw new Exception("An error has occurred"),
-        };
+        switch ($mockValue) {
+            case self::VALID_PAGE:
+                return [1, 2, 3];
+            case self::EMPTY_PAGE:
+                return [];
+            case self::INVALID_PAGE:
+            default:
+                throw new Exception("An error has occurred");
+        }
     }
 }

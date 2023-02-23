@@ -58,6 +58,8 @@ class ZendeskMockSource extends ZendeskSource
     }
 
     /**
+     * Returns fake output for testing purposes.
+     *
      * @param int $mockValue
      * @return array|string[]
      * @throws Exception
@@ -67,7 +69,6 @@ class ZendeskMockSource extends ZendeskSource
         switch ($mockValue) {
             case self::VALID_PAGE:
                 return ["zd1", "zd2", "zd3"];
-                break;
             case self::EMPTY_PAGE:
                 return [];
             case self::INVALID_PAGE:
