@@ -143,10 +143,6 @@ class ZendeskSource extends AbstractSource
             $kbs = $dest->importKnowledgeBases($kbs);
             $translate = $this->config["import"]["translations"] ?? false;
 
-            foreach ($knowledgeBases as $knowledgeBase) {
-                $results[] = $this->addPrefix($knowledgeBase["id"]);
-            }
-
             foreach ($kbs as $kb) {
                 if ($translate) {
                     /** @var iterable $translation */
@@ -185,6 +181,12 @@ class ZendeskSource extends AbstractSource
                     $dest->importKnowledgeBaseTranslations($kbTranslations);
                 }
             }
+
+            foreach ($knowledgeBases as $knowledgeBase) {
+                $results[] = $this->addPrefix($knowledgeBase["id"]);
+            }
+
+
         }
 
         return $results;
