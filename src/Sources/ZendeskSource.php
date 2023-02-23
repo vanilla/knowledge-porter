@@ -142,8 +142,12 @@ class ZendeskSource extends AbstractSource
             $dest = $this->getDestination();
             $kbs = $dest->importKnowledgeBases($kbs);
             $translate = $this->config["import"]["translations"] ?? false;
+
+            foreach ($knowledgeBases as $knowledgeBase) {
+                $results[] = $this->addPrefix($knowledgeBase["id"]);
+            }
+
             foreach ($kbs as $kb) {
-                $results[] = $kb["foreignID"];
                 if ($translate) {
                     /** @var iterable $translation */
                     $translation = $this->zendesk->getCategoryTranslations(

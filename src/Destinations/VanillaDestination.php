@@ -1264,7 +1264,8 @@ class VanillaDestination extends AbstractDestination
         );
 
         foreach ($knowledgeCategories as $knowledgeCategory) {
-            if ($knowledgeCategory["parentID"] < 1) {
+            if ($knowledgeCategory["parentID"] < 1 || $knowledgeCategory['articleCount'] > 0) {
+                // We'll skip the Categories that are not empty for now. They should be cleared for the next iteration.
                 $skipped[] = $knowledgeCategory["foreignID"];
             } elseif (in_array($knowledgeCategory["foreignID"], $foreignKnowledgeCategoryIDs)) {
                 $matched[] = $knowledgeCategory["knowledgeCategoryID"];
