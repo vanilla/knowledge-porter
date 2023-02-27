@@ -61,6 +61,8 @@ class VanillaDestination extends AbstractDestination
         ["parentID", "resolveKnowledgeCategoryID"],
     ];
 
+    const DELETED_STATUS = "deleted";
+
     /** @var array */
     private static $kbcats = [];
 
@@ -1218,5 +1220,129 @@ class VanillaDestination extends AbstractDestination
         }
 
         return $res;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function syncKnowledgeBase(
+        array $foreignKnowledgeBaseIDs,
+        array $query = []
+    ): array
+    {
+        $matched = $skipped = [];
+        $knowledgeBases = $this->vanillaApi->getKnowledgeBases($query);
+
+        foreach ($knowledgeBases as $knowledgeBase) {
+            if (
+                in_array($knowledgeBase["foreignID"], $foreignKnowledgeBaseIDs)
+            ) {
+                $matched[] = $knowledgeBase["knowledgeBaseID"];
+            } else {
+                $skipped[] = $knowledgeBase["knowledgeBaseID"];
+            }
+        }
+
+        $processedCount = count($knowledgeBases);
+        if ($processedCount > 0) {
+            $matchedCount = count($matched);
+            $skippedCount = count($skipped);
+            $this->logger->info("Synced $processedCount knowledgeBases (matched: $matchedCount, skipped: $skippedCount).");
+        }
+        return ["fetched" => $processedCount , "vanillaIDs" => $matched];
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function syncKnowledgeCategories(
+        array $foreignKnowledgeCategoryIDs,
+        array $query = []
+    ): array
+    {
+        $matched = $deleted = $skipped = $failed = [];
+        $knowledgeCategories = $this->vanillaApi->getKnowledgeCategories(
+            $query
+        );
+
+        foreach ($knowledgeCategories as $knowledgeCategory) {
+            if ($knowledgeCategory["parentID"] < 1) {
+                $skipped[] = $knowledgeCategory["foreignID"];
+            } elseif (in_array($knowledgeCategory["foreignID"], $foreignKnowledgeCategoryIDs)) {
+                $matched[] = $knowledgeCategory["knowledgeCategoryID"];
+            } elseif ($knowledgeCategory['articleCount'] > 0) {
+                // We'll skip the Categories that are not empty for now. They should be cleared for the next iteration.
+                $skipped[] = $knowledgeCategory["foreignID"];
+            } else {
+                $this->logger->info(
+                    "Deleting knowledge category {$knowledgeCategory["knowledgeCategoryID"]} because it no longer exists on the source."
+                );
+                try {
+                    $this->vanillaApi->delete(
+                        "/api/v2/knowledge-categories/{$knowledgeCategory["knowledgeCategoryID"]}"
+                    );
+                    $deleted[] = $knowledgeCategory["knowledgeCategoryID"];
+                } catch (HttpResponseException $e) {
+                    $failed[] = $knowledgeCategory["knowledgeCategoryID"];
+                    $this->logger->error($e->getMessage());
+                }
+            }
+        }
+
+        $processedCount = count($knowledgeCategories);
+        if ($processedCount > 0) {
+            $matchedCount = count($matched);
+            $deletedCount = count($deleted);
+            $skippedCount = count($skipped);
+            $failedCount = count($failed);
+            $this->logger->info("Synced $processedCount knowledgeCategories (matched: $matchedCount, deleted: $deletedCount, skipped: $skippedCount, failed: $failedCount).");
+        }
+        return ["fetched" => $processedCount , "vanillaIDs" => $matched];
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function syncArticles(
+        array $foreignArticleIDs,
+        array $query = []
+    ): array
+    {
+        $matched = $deleted = $failed = [];
+        $articles = $this->vanillaApi->getArticles($query);
+
+        foreach ($articles as $article) {
+            if (in_array($article["foreignID"], $foreignArticleIDs)) {
+                $matched[] = $article["articleID"];
+            } else {
+                $this->logger->debug(
+                    "Deleting article {$article["articleID"]} because it no longer exists on the source."
+                );
+
+                $response = $this->vanillaApi->patch(
+                    "/api/v2/articles/{$article["articleID"]}",
+                    ["status" => self::DELETED_STATUS]
+                );
+
+                if (!$response->isSuccessful()) {
+                    $this->logger->error(
+                        "Failed deleting article with ID {$article["articleID"]}."
+                    );
+                    $failed[] = $article["articleID"];
+                } else {
+                    $deleted[] = $article["articleID"];
+                }
+            }
+        }
+
+        $processedCount = count($articles);
+
+        if($processedCount > 0) {
+            $matchedCount = count($matched);
+            $deletedCount = count($deleted);
+            $failedCount = count($failed);
+            $this->logger->info("Synced $processedCount Articles (matched: $matchedCount, deleted: $deletedCount, failed: $failedCount).");
+        }
+        return ["fetched" => $processedCount , "vanillaIDs" => $matched];
     }
 }

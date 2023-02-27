@@ -104,11 +104,13 @@ class ZendeskSource extends AbstractSource
 
     /**
      * Process: GET zendesk categories, POST/PATCH vanilla knowledge bases
+     * @return array
      */
-    private function processKnowledgeBases()
+    public function processKnowledgeBases(): array
     {
         [$pageLimit, $pageFrom, $pageTo] = $this->getPaginationInformation();
         $locale = $this->config["sourceLocale"] ?? self::DEFAULT_SOURCE_LOCALE;
+        $results = [];
 
         for ($page = $pageFrom; $page <= $pageTo; $page++) {
             $knowledgeBases = $this->zendesk->getCategories($locale, [
@@ -116,7 +118,7 @@ class ZendeskSource extends AbstractSource
                 "per_page" => $pageLimit,
             ]);
             if (empty($knowledgeBases)) {
-                break;
+                return [];
             }
             $kbs = $this->transform($knowledgeBases, [
                 "foreignID" => [
@@ -140,6 +142,7 @@ class ZendeskSource extends AbstractSource
             $dest = $this->getDestination();
             $kbs = $dest->importKnowledgeBases($kbs);
             $translate = $this->config["import"]["translations"] ?? false;
+
             foreach ($kbs as $kb) {
                 if ($translate) {
                     /** @var iterable $translation */
@@ -178,18 +181,27 @@ class ZendeskSource extends AbstractSource
                     $dest->importKnowledgeBaseTranslations($kbTranslations);
                 }
             }
+
+            foreach ($knowledgeBases as $knowledgeBase) {
+                $results[] = $this->addPrefix($knowledgeBase["id"]);
+            }
+
+
         }
+
+        return $results;
     }
 
     /**
      * Process: GET zendesk sections, POST/PATCH vanilla knowledge categories
      *
-     * @return iterable
+     * @return array
      */
-    private function processKnowledgeCategories()
+    public function processKnowledgeCategories(): array
     {
         [$pageLimit, $pageFrom, $pageTo] = $this->getPaginationInformation();
         $locale = $this->config["sourceLocale"] ?? self::DEFAULT_SOURCE_LOCALE;
+        $results = [];
 
         /** @var VanillaDestination $dest */
         $dest = $this->getDestination();
@@ -200,7 +212,7 @@ class ZendeskSource extends AbstractSource
                 "per_page" => $pageLimit,
             ]);
             if (empty($categories)) {
-                break;
+                return [];
             }
 
             $knowledgeCategories = $this->transform($categories, [
@@ -228,10 +240,15 @@ class ZendeskSource extends AbstractSource
                 $knowledgeCategories,
                 $translate
             );
+            foreach ($categories as $category) {
+                $results[] = $this->addPrefix($category["id"]);
+            }
         }
         if ($this->config["import"]["retrySections"] ?? true) {
             $this->rerunProcessKnowledgeCategories($dest);
         }
+
+        return $results;
     }
 
     /**
@@ -248,12 +265,15 @@ class ZendeskSource extends AbstractSource
 
     /**
      * Process: GET zendesk articles, POST/PATCH vanilla knowledge base articles
+     * @return array
      */
-    private function processKnowledgeArticles()
+    public function processKnowledgeArticles(): array
     {
         [$pageLimit, $pageFrom, $pageTo] = $this->setPageLimits();
         $locale = $this->config["sourceLocale"] ?? self::DEFAULT_SOURCE_LOCALE;
         $skipStatus = [];
+        $results = [];
+
         if (!($this->config["import"]["fetchDraft"] ?? false)) {
             array_push($skipStatus, "draft");
         }
@@ -276,7 +296,7 @@ class ZendeskSource extends AbstractSource
 
             $articles = $this->zendesk->getArticles($locale, $queryParams);
             if (empty($articles)) {
-                break;
+                return [];
             }
             $knowledgeArticles = $this->transform($articles, [
                 "foreignID" => [
@@ -386,8 +406,12 @@ class ZendeskSource extends AbstractSource
                     $dest->importArticleVotes($kbVotes);
                 }
             }
+
+            foreach ($articles as $article) {
+                $results[] = $this->addPrefix($article["id"]);
+            }
         }
-        return [];
+        return $results;
     }
 
     /**
@@ -612,8 +636,10 @@ class ZendeskSource extends AbstractSource
      * @param array $row
      * @return string
      */
-    protected function prepareBody(array $row, ?string $body = null): string
-    {
+    protected function prepareBody(
+        ?string $body = null,
+        array $row = []
+    ): string {
         $returnBody = "";
         if (is_string($body)) {
             $returnBody = $this->parseUrls($body);

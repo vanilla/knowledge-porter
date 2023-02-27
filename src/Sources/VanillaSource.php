@@ -50,7 +50,9 @@ class VanillaSource extends AbstractSource {
      */
     private function processKnowledgeBases() {
         $dest = $this->getDestination();
-        $knowledgeBases = $this->vanillaApi->getKnowledgeBases('en');
+        $knowledgeBases = $this->vanillaApi->getKnowledgeBases([
+            "locale" => "en",
+        ]);
         $kbs = $this->transform($knowledgeBases, [
             'foreignID' => ["column" =>'knowledgeBaseID', "filter" => [$this, "addPrefix"]],
             'name' => 'name',
@@ -77,8 +79,12 @@ class VanillaSource extends AbstractSource {
     /**
      * Process: GET vanilla kb categories, POST/PATCH vanilla knowledge categories
      */
-    private function processKnowledgeCategories() {
-        $categories = $this->vanillaApi->getKnowledgeCategories('en', ['knowledgeBaseID']);
+    private function processKnowledgeCategories()
+    {
+        $query = [
+            "locale" => "en",
+        ];
+        $categories = $this->vanillaApi->getKnowledgeCategories($query);
         $knowledgeCategories = $this->transform($categories, [
             'foreignID' => ["column" =>'knowledgeCategoryID', "filter" => [$this, "addPrefix"]],
             'knowledgeBaseID' => ["column" =>'knowledgeBaseID', "filter" => [$this, "knowledgeBaseSmartId"]],
