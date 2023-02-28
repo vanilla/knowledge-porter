@@ -137,7 +137,7 @@ class VanillaMockDestination extends AbstractDestination
     {
         switch ($mockValue) {
             case self::VALID_PAGE:
-                return [1, 2, 3];
+                return ["fetched" => 3, "vanillaIDs" => [1, 2, 3]];
             case self::EMPTY_PAGE:
                 return [];
             case self::INVALID_PAGE:
