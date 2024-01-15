@@ -29,7 +29,6 @@ class ZendeskSource extends AbstractSource
     const LIMIT = 50;
     const PAGE_START = 1;
     const PAGE_END = 10;
-
     const DEFAULT_SOURCE_LOCALE = "en-us";
     const DEFAULT_LOCALE = "en";
 
@@ -286,7 +285,7 @@ class ZendeskSource extends AbstractSource
             $queryParams = ["page" => $page, "per_page" => $pageLimit];
 
             $syncFrom = $this->config["syncFrom"] ?? null;
-            $syncFrom = strtotime($syncFrom);
+            $syncFrom = !is_null($syncFrom) ? strtotime($syncFrom) : null;
             $currentTime = time();
 
             $syncFrom = $syncFrom >= $currentTime ? false : $syncFrom;
