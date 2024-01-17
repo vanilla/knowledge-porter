@@ -1323,7 +1323,7 @@ class VanillaDestination extends AbstractDestination
                 );
 
                 $response = $this->vanillaApi->patch(
-                    "/api/v2/articles/{$article["articleID"]}",
+                    "/api/v2/articles/{$article["articleID"]}/status",
                     ["status" => self::DELETED_STATUS]
                 );
 
