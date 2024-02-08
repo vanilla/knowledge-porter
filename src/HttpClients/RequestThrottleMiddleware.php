@@ -17,6 +17,8 @@ class RequestThrottleMiddleware
 {
     protected $lastRequestTime = null;
 
+    private $lastRequestMicrotime = false;
+
     /**
      * Make sure at least one second has past between each call.
      *
@@ -27,8 +29,7 @@ class RequestThrottleMiddleware
     public function __invoke(HttpRequest $request, callable $next): HttpResponse
     {
         $minRequestMicroTime = 1000 * 1000;
-        $this->lastRequestMicrotime =
-            $this->lastRequestMicrotime ?? microtime(true);
+        $this->lastRequestMicrotime = $this->lastRequestMicrotime ?? microtime(true);
         $diff = microtime(true) - $this->lastRequestMicrotime;
         if ($diff < $minRequestMicroTime) {
             usleep($minRequestMicroTime - (int) $diff);

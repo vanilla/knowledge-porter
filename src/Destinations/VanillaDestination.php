@@ -219,6 +219,7 @@ class VanillaDestination extends AbstractDestination
             $lookup = $row;
             $lookup["recordIDs"] = [$row["recordID"]];
             $existing = $this->vanillaApi->getKnowledgeBaseTranslation($lookup);
+
             $patch = $this->updateFields(
                 $existing,
                 $row,
@@ -1014,11 +1015,13 @@ class VanillaDestination extends AbstractDestination
                 $res = $this->compareFields($existing, $new, $fieldsMap);
                 break;
             case self::UPDATE_MODE_ON_DATE:
-                $existingDate = strtotime($existing[self::DATE_UPDATED]);
-                $newDate = strtotime($new[self::DATE_UPDATED]);
+                if (isset($existing[self::DATE_UPDATED])) {
+                    $existingDate = strtotime($existing[self::DATE_UPDATED]);
+                    $newDate = strtotime($new[self::DATE_UPDATED]);
 
-                if ($existingDate < $newDate) {
-                    $res = $this->resolveUpdateFields($new, $fieldsMap);
+                    if ($existingDate < $newDate) {
+                        $res = $this->resolveUpdateFields($new, $fieldsMap);
+                    }
                 }
 
                 break;
@@ -1320,7 +1323,7 @@ class VanillaDestination extends AbstractDestination
                 );
 
                 $response = $this->vanillaApi->patch(
-                    "/api/v2/articles/{$article["articleID"]}",
+                    "/api/v2/articles/{$article["articleID"]}/status",
                     ["status" => self::DELETED_STATUS]
                 );
 
