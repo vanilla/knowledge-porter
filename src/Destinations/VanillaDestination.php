@@ -219,7 +219,6 @@ class VanillaDestination extends AbstractDestination
             $lookup = $row;
             $lookup["recordIDs"] = [$row["recordID"]];
             $existing = $this->vanillaApi->getKnowledgeBaseTranslation($lookup);
-
             $patch = $this->updateFields(
                 $existing,
                 $row,
