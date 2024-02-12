@@ -1322,12 +1322,9 @@ class VanillaDestination extends AbstractDestination
                     "Deleting article {$article["articleID"]} because it no longer exists on the source."
                 );
 
-                $this->logger->debug("HeyO-HeyO-HeyO-HeyO-HeyO-HeyO-HeyO-HeyO-HeyO-HeyO-HeyO-HeyO-HeyO-HeyO!");
-
                 $response = $this->vanillaApi->patch(
                     "/api/v2/articles/{$article["articleID"]}/status",
-                    ["status" => self::DELETED_STATUS],
-                    ["Cookie: vanilla_ratelimit_bypass=dev-cjhLJkudRmvKXvWH7qT4Kr8gksx3Qouf"]
+                    ["status" => self::DELETED_STATUS]
                 );
 
                 if (!$response->isSuccessful()) {
