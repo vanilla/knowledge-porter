@@ -9,7 +9,7 @@
         "ext-json": "*",
         "vanilla/garden-cli": "^4.0",
         "vanilla/garden-container": "^4.0",
-        "vanilla/garden-schema": "^3.0",
+        "vanilla/garden-schema": "^1.0|^3.0",
         "vanilla/garden-http": "^2.0|^3.0",
         "psr/log": "^3.0",
         "psr/simple-cache": "*",
